@@ -1,4 +1,5 @@
 import { useState, ChangeEvent } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Smartphone, Calendar, Image } from 'lucide-react';
 import { Button } from '../components/ui/button';
