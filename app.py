@@ -12,7 +12,8 @@ import numpy as np
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=api_key) if api_key else None
 
 # Modèle pour la réponse de l'analyse des biais
 class BiasAnalysisResponse(BaseModel):
@@ -23,6 +24,8 @@ class BiasAnalysisResponse(BaseModel):
 def set_openai_api_key(api_key):
     if api_key:
         os.environ["OPENAI_API_KEY"] = api_key
+        global client
+        client = OpenAI(api_key=api_key)
         return "Clé API définie avec succès !"
     else:
         return "La clé API est requise !"
@@ -33,14 +36,16 @@ def analyze_biases(objective_text):
         prompt = f"""
         Vous êtes un assistant IA formé à l'analyse de textes pour y déceler des biais cognitifs.
         Analysez le texte suivant à la recherche de biais cognitifs potentiels et donnez des conseils sur la manière de les atténuer.
+        Répondez dans le même langage de l'utilisateur.
 
         Texte :
         {objective_text}
 
-        Fournissez votre analyse dans un langage clair et concis, en deux parties : 
+        Fournissez votre analyse dans un langage clair et très concis, en deux parties : 
         1. Analyse des biais cognitifs.
         2. Conseils pour atténuer ces biais.
         """
+        print("Sending request to OpenAI with prompt:", prompt)
         completion = client.beta.chat.completions.parse(
             model="gpt-4o",
             messages=[
@@ -54,9 +59,11 @@ def analyze_biases(objective_text):
         
         # Obtenir la réponse structurée
         response_content = completion.choices[0].message.parsed
+        print("Received response from OpenAI:", response_content)
         return response_content.dict()
 
     except Exception as e:
+        print("Error during bias analysis:", str(e))
         return {"error": str(e)}
 
 def generate_persona_image(first_name, last_name, age, persona_description):
@@ -171,7 +178,7 @@ def review_persona(first_name, last_name, age, personal_history, consumption_pre
     html_content = f"""
     <h2>{first_name} {last_name}, Age: {age}</h2>
     <img src="{image_url}" alt="Persona Image" width="200">
-    <h3>Hisoire personnelle</h3>
+    <h3>Histoire personnelle</h3>
     <p>{personal_history}</p>
     <h3>Préférences de consommation</h3>
     <p>{consumption_preferences}</p>
@@ -196,30 +203,51 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
 
     with gr.Tab("Étape 1: Objectif et analyse des biais"):
         objective_input = gr.Textbox(label="Objectif du persona", lines=3)
+        analyze_button = gr.Button("Analyser les biais")
+        bias_analysis_output = gr.Markdown()
 
-        # Utilisation du décorateur @gr.render pour générer dynamiquement les biais
+        # Fonction pour afficher dynamiquement les biais et les conseils
         @gr.render(inputs=objective_input)
-        def analyze_biases(text):
-            # Compter les mots dans le texte
-            word_count = len(text.split())
-            if word_count < 30:
-                return "Veuillez entrer un texte plus long pour analyser les biais."
-            else:
-                response = "Placeholder for bias analysis"
-                if "error" in response:
-                    return f"Erreur: {response['error']}"
-                else:
-                    gr.Markdown(f"{response}")
+        def display_biases_and_advice(objective_text):
+            print("Analyzing biases for text:", objective_text)
+            analysis_result = analyze_biases(objective_text)
+            if "error" in analysis_result:
+                gr.Markdown(f"Erreur: {analysis_result['error']}")
+                return
+            
+            biases = analysis_result.get("biases", [])
+            advice = analysis_result.get("advice", [])
+            
+            if not biases or not advice:
+                gr.Markdown("Aucun biais détecté ou conseils disponibles.")
+                return
+            
+            with gr.Row():
+                for bias, adv in zip(biases, advice):
+                    with gr.Column(scale=1, min_width=200):
+                        gr.Markdown(f"{bias}")
+                        gr.Markdown(f"**Conseil:** {adv}")
+
+        # Utilisation du bouton pour déclencher l'analyse des biais
+        analyze_button.click(
+            fn=display_biases_and_advice,
+            inputs=objective_input,
+            outputs=bias_analysis_output
+        )
 
     # Autres étapes comme avant (image, révision et PDF)
 
     with gr.Tab("Étape 2: Image du persona et informations de base"):
-        first_name_input = gr.Textbox(label="Prénom")
-        last_name_input = gr.Textbox(label="Nom de famille")
-        age_input = gr.Slider(label="Âge", minimum=18, maximum=100, step=1)
-        persona_description_input = gr.Textbox(label="Description du persona", lines=3)
-        generate_image_button = gr.Button("Générer l'image du persona")
-        persona_image_output = gr.Image(label="Image du persona")
+        with gr.Row():
+            with gr.Column(scale=1):
+                first_name_input = gr.Textbox(label="Prénom")
+                last_name_input = gr.Textbox(label="Nom de famille")
+                age_input = gr.Slider(label="Âge", minimum=18, maximum=100, step=1)
+                persona_description_input = gr.Textbox(label="Description du persona", lines=3)
+                generate_image_button = gr.Button("Générer l'image du persona")
+            with gr.Column(scale=1):
+                persona_image_output = gr.Image(label="Image du persona")
+        
         generate_image_button.click(
             fn=generate_persona_image,
             inputs=[first_name_input, last_name_input, age_input, persona_description_input],
@@ -247,7 +275,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
         generate_pdf_button = gr.Button("Générer le PDF")
         pdf_output = gr.File(label="Télécharger le PDF")
         generate_pdf_button.click(
-            fn=generate_pdf,
+            fn=generate_pdf_wrapper,
             inputs=[first_name_input, last_name_input, age_input, personal_history_input, consumption_preferences_input, behaviors_habits_input, persona_image_output],
             outputs=pdf_output
         )
