@@ -193,7 +193,7 @@ def assist_persona_creation(first_name, last_name, age, personal_history, consum
         temperature=0.7,
         max_tokens=500,
     )
-    suggestions = response['choices'][0]['message']['content'].strip()
+    suggestions = response.choices[0]['message']['content'].strip()
     return suggestions
 
 # Remplacer la fonction generate_pdf pour utiliser reportlab
@@ -330,7 +330,7 @@ def auto_fill_persona_fields(first_name, last_name, age):
         temperature=0.7,
         max_tokens=500,
     )
-    content = response['choices'][0]['message']['content'].strip()
+    content = response.choices[0]['message']['content'].strip()
     # Traitement de la réponse pour extraire les sections
     result = {
         'personal_history': '',
