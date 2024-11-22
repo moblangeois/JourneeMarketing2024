@@ -133,7 +133,7 @@ def analyze_biases(objective_text):
                 {"role": "system", "content": system__prompt},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.5,
+            temperature=0.2,
             max_tokens=800,
             response_format=BiasAnalysisResponse
         )
@@ -147,14 +147,12 @@ def analyze_biases(objective_text):
         return {"error": str(e)}
 
 # Optimiser la génération d'image pour utiliser directement l'URL
-def generate_persona_image(first_name, last_name, age, persona_description, mode):
-    if not first_name or not last_name or not age:
+def generate_persona_image(first_name, last_name, age, gender, persona_description, mode):
+    if not first_name or not last_name or not age or not gender:
         return "Veuillez remplir tous les champs pour générer l'image du persona."
 
-    prompt = f"""
-    A portrait photograph of a persona named {first_name} {last_name}, a {age}-year-old individual.  A headshot for a social media profile. High-quality portrait, natural lighting, neutral background, genuine expression.
-    """
-
+    prompt = f"A portrait photograph of a {gender} persona named {first_name} {last_name}, a {age}-year-old individual. {persona_description}. High-quality portrait, natural lighting, neutral background, genuine expression."
+    
     if mode == "OpenAI":
         try:
             response = client.images.generate(
@@ -166,7 +164,13 @@ def generate_persona_image(first_name, last_name, age, persona_description, mode
             )
             image_url = response.data[0].url
             print("Generated image URL:", image_url)
-            return image_url
+            
+            # Télécharger l'image et l'enregistrer temporairement
+            response = requests.get(image_url)
+            temp_image = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            with open(temp_image.name, 'wb') as f:
+                f.write(response.content)
+            return temp_image.name
         except Exception as e:
             return {"error": str(e)}
     elif mode == "Temps réel":
@@ -272,9 +276,16 @@ def generate_real_time_image(prompt_text, seed=0):
         return {"error": "Le client Gradio n'a pas pu être initialisé. Veuillez vérifier votre configuration."}
     try:
         result = image_client.predict(prompt_text, seed, api_name="/predict")
-        image_url = result[0]  # Assurez-vous que le résultat est une URL d'image
-        print("Generated lightning image URL:", image_url)
-        return image_url
+        image_path = result  # Le résultat est un chemin de fichier
+        print("Generated lightning image path:", image_path)
+        
+        # Lire l'image depuis le chemin de fichier et l'enregistrer temporairement
+        with open(image_path, 'rb') as f:
+            image_data = f.read()
+        temp_image = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+        with open(temp_image.name, 'wb') as f:
+            f.write(image_data)
+        return temp_image.name
     except Exception as e:
         error_message = str(e)
         if "exceeded your GPU quota" in error_message:
@@ -283,11 +294,11 @@ def generate_real_time_image(prompt_text, seed=0):
         return {"error": error_message}
 
 # Fonction pour générer l'image du persona en fonction du mode sélectionné
-def generate_persona_image(first_name, last_name, age, persona_description, mode):
-    if not first_name or not last_name or not age:
+def generate_persona_image(first_name, last_name, age, gender, persona_description, mode):
+    if not first_name or not last_name or not age or not gender:
         return "Veuillez remplir tous les champs pour générer l'image du persona."
 
-    prompt = f"A portrait photograph of a persona named {first_name} {last_name}, a {age}-year-old individual. {persona_description}. High-quality portrait, natural lighting, neutral background, genuine expression."
+    prompt = f"A portrait photograph of a {gender} persona named {first_name} {last_name}, a {age}-year-old individual. {persona_description}. High-quality portrait, natural lighting, neutral background, genuine expression."
     
     if mode == "OpenAI":
         try:
@@ -300,7 +311,13 @@ def generate_persona_image(first_name, last_name, age, persona_description, mode
             )
             image_url = response.data[0].url
             print("Generated image URL:", image_url)
-            return image_url
+            
+            # Télécharger l'image et l'enregistrer temporairement
+            response = requests.get(image_url)
+            temp_image = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            with open(temp_image.name, 'wb') as f:
+                f.write(response.content)
+            return temp_image.name
         except Exception as e:
             return {"error": str(e)}
     elif mode == "Temps réel":
@@ -467,6 +484,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 first_name_input = gr.Textbox(label="Prénom")
                 last_name_input = gr.Textbox(label="Nom de famille")
                 age_input = gr.Slider(label="Âge", minimum=18, maximum=100, step=1)
+                gender_input = gr.Radio(label="Genre", choices=["homme", "femme"], value="homme")
                 persona_description_input = gr.Textbox(label="Description du persona", lines=3)
                 image_mode = gr.Radio(label="Mode de génération d'image", choices=["OpenAI", "Temps réel"], value="OpenAI")
                 generate_image_button = gr.Button("Générer l'image du persona")
@@ -475,21 +493,21 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
         
         generate_image_button.click(
             fn=generate_persona_image,
-            inputs=[first_name_input, last_name_input, age_input, persona_description_input, image_mode],
+            inputs=[first_name_input, last_name_input, age_input, gender_input, persona_description_input, image_mode],
             outputs=persona_image_output
         )
 
         # Génération d'image en temps réel tous les deux mots ajoutés
-        def generate_image_realtime(first_name, last_name, age, persona_description, previous_count, mode):
+        def generate_image_realtime(first_name, last_name, age, gender, persona_description, previous_count, mode):
             current_count = len(persona_description.split())
             if current_count - previous_count >= 2:
-                image_url = generate_persona_image(first_name, last_name, age, persona_description, mode)
+                image_url = generate_persona_image(first_name, last_name, age, gender, persona_description, mode)
                 return image_url, current_count
             return persona_image_output, previous_count
 
         persona_description_input.change(
             fn=generate_image_realtime,
-            inputs=[first_name_input, last_name_input, age_input, persona_description_input, word_count_state, image_mode],
+            inputs=[first_name_input, last_name_input, age_input, gender_input, persona_description_input, word_count_state, image_mode],
             outputs=[persona_image_output, word_count_state]
         )
 
