@@ -141,18 +141,15 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
     if not first_name or not last_name or not age or not gender:
         return "Veuillez remplir tous les champs pour générer l'image du persona."
 
-    prompt = f"A portrait photograph of a {gender} persona named {first_name} {last_name}, a {age}-year-old individual. {persona_description}. High-quality portrait, natural lighting, neutral background, genuine expression."
+    prompt = f"{first_name}, {last_name}, photorealistic {gender}, {age} years old. {persona_description}. Normal person, basic, normie."
     
     response = client.images.generate(
         model="dall-e-3",
         prompt=prompt,
         size="1024x1024",
-        quality="standard",
         n=1,
     )
-    image_url = response.images[0].url
-
-    print("Generated image URL:", image_url)
+    image_url = response.data[0].url
     
     # Télécharger l'image et l'enregistrer temporairement
     response = requests.get(image_url)
@@ -358,7 +355,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 last_name_input = gr.Textbox(label="Nom de famille")
                 age_input = gr.Slider(label="Âge", minimum=18, maximum=100, step=1)
                 gender_input = gr.Radio(label="Genre", choices=["homme", "femme"], value="homme")
-                persona_description_input = gr.Textbox(label="Description du persona", lines=3)
+                persona_description_input = gr.Textbox(label="Description du persona (en anglais)", lines=1)
                 generate_image_button = gr.Button("Générer l'image du persona")
             with gr.Column(scale=1):
                 persona_image_output = gr.Image(label="Image du persona")
@@ -443,92 +440,124 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             outputs=refined_suggestions_output
         )
 
-        # Bouton pour traiter et afficher le profil du persona
-        process_button = gr.Button("Enregistrer le profil du persona")
+    # Ajout du nouvel onglet "Résumé et export du persona"
+    with gr.Tab("Résumé et export du persona"):
+        gr.Markdown("### Résumé et export du persona")
+        
+        # Bouton pour afficher le résumé du persona
+        generate_summary_button = gr.Button("Afficher le résumé du persona")
         
         # Zone de sortie pour l'aperçu du persona
         persona_output = gr.HTML(label="Aperçu du persona")
         
         # Fonction pour traiter et afficher le profil du persona
-        def process_persona(
-            persona_image_output, first_name_input, last_name_input,
-            age_input, gender_input, marital_status_input, education_level_input, profession_input, income_input,
-            personality_traits_input, values_beliefs_input, motivations_input, hobbies_interests_input,
-            main_responsibilities_input, daily_activities_input, technology_relationship_input,
-            product_related_activities_input, pain_points_input, product_goals_input, usage_scenarios_input,
-            brand_relationship_input, market_segment_input, commercial_objectives_input,
-            visual_codes_input, special_considerations_input,
-            daily_life_input, references_input
+        def process_persona_wrapper(
+            persona_image_output, first_name_input, last_name_input, age_input, gender_input, marital_status_input,
+            education_level_input, profession_input, income_input, personality_traits_input, values_beliefs_input,
+            motivations_input, hobbies_interests_input, main_responsibilities_input, daily_activities_input,
+            technology_relationship_input, product_related_activities_input, pain_points_input, product_goals_input,
+            usage_scenarios_input, brand_relationship_input, market_segment_input, commercial_objectives_input,
+            visual_codes_input, special_considerations_input, daily_life_input, references_input
         ):
-            # Construire le profil du persona à partir des champs saisis
-            persona_profile = f"""
-            <h2>Profil du Persona</h2>
-            <h3>1. Informations de base</h3>
-            <ul>
-            <img src="{persona_image_output}" alt="Persona Image" width="200">
-                <li><strong>Prénom:</strong> {first_name_input}</li>
-                <li><strong>Nom de famille:</strong> {last_name_input}</li>
-                <li><strong>Âge:</strong> {age_input}</li>
-                <li><strong>Genre:</strong> {gender_input}</li>
-                <li><strong>État civil:</strong> {marital_status_input}</li>
-                <li><strong>Niveau d'éducation:</strong> {education_level_input}</li>
-                <li><strong>Profession:</strong> {profession_input}</li>
-                <li><strong>Revenus annuels:</strong> {income_input} €</li>
-                <li><strong>Traits de personnalité:</strong> {personality_traits_input}</li>
-                <li><strong>Valeurs et croyances:</strong> {values_beliefs_input}</li>
-                <li><strong>Motivations intrinsèques:</strong> {motivations_input}</li>
-                <li><strong>Hobbies et intérêts:</strong> {hobbies_interests_input}</li>
-            </ul>
-            <h3>2. Informations liées au design</h3>
-            <ul>
-                <li><strong>Responsabilités principales:</strong> {main_responsibilities_input}</li>
-                <li><strong>Activités journalières:</strong> {daily_activities_input}</li>
-                <li><strong>Relation avec la technologie:</strong> {technology_relationship_input}</li>
-                <li><strong>Tâches liées au produit:</strong> {product_related_activities_input}</li>
-                <li><strong>Points de douleur:</strong> {pain_points_input}</li>
-                <li><strong>Objectifs d’utilisation du produit:</strong> {product_goals_input}</li>
-                <li><strong>Scénarios d’utilisation:</strong> {usage_scenarios_input}</li>
-            </ul>
-            <h3>3. Informations marketing et commerciales</h3>
-            <ul>
-                <li><strong>Relation avec la marque:</strong> {brand_relationship_input}</li>
-                <li><strong>Segment de marché:</strong> {market_segment_input}</li>
-                <li><strong>Objectifs commerciaux:</strong> {commercial_objectives_input}</li>
-            </ul>
-            <h3>4. Graphismes et accessibilité</h3>
-            <ul>
-                <li><strong>Graphiques et codes visuels:</strong> {visual_codes_input}</li>
-                <li><strong>Considérations spéciales:</strong> {special_considerations_input}</li>
-            </ul>
-            <h3>5. Dimensions supplémentaires</h3>
-            <ul>
-                <li><strong>Une journée dans la vie:</strong> {daily_life_input}</li>
-                <li><strong>Références:</strong> {references_input}</li>
-            </ul>
-            <button id="export-pdf-button">Exporter en PDF</button>
-            """
+            persona_profile = process_persona(
+                persona_image_output, first_name_input, last_name_input, age_input, gender_input, marital_status_input,
+                education_level_input, profession_input, income_input, personality_traits_input, values_beliefs_input,
+                motivations_input, hobbies_interests_input, main_responsibilities_input, daily_activities_input,
+                technology_relationship_input, product_related_activities_input, pain_points_input, product_goals_input,
+                usage_scenarios_input, brand_relationship_input, market_segment_input, commercial_objectives_input,
+                visual_codes_input, special_considerations_input, daily_life_input, references_input
+            )
             return persona_profile
-
-        # Fonction pour générer le PDF et le retourner comme fichier téléchargeable
-        def export_pdf(first_name, last_name, age, image_url):
-            pdf_file = generate_pdf(first_name, last_name, age, image_url)
-            return pdf_file
         
-        # Associer le bouton à la fonction de traitement
-        process_button.click(
-            fn=process_persona,
+        generate_summary_button.click(
+            fn=process_persona_wrapper,
             inputs=[
-                persona_image_output, first_name_input, last_name_input, age_input, gender_input, marital_status_input, education_level_input, profession_input, income_input,
-                personality_traits_input, values_beliefs_input, motivations_input, hobbies_interests_input,
-                main_responsibilities_input, daily_activities_input, technology_relationship_input,
-                product_related_activities_input, pain_points_input, product_goals_input, usage_scenarios_input,
-                brand_relationship_input, market_segment_input, commercial_objectives_input,
-                visual_codes_input, special_considerations_input,
-                daily_life_input, references_input
+                persona_image_output, first_name_input, last_name_input, age_input, gender_input, marital_status_input,
+                education_level_input, profession_input, income_input, personality_traits_input, values_beliefs_input,
+                motivations_input, hobbies_interests_input, main_responsibilities_input, daily_activities_input,
+                technology_relationship_input, product_related_activities_input, pain_points_input, product_goals_input,
+                usage_scenarios_input, brand_relationship_input, market_segment_input, commercial_objectives_input,
+                visual_codes_input, special_considerations_input, daily_life_input, references_input
             ],
             outputs=persona_output
         )
+        
+        # Bouton pour exporter le persona en PDF
+        export_pdf_button = gr.Button("Exporter en PDF")
+        
+        # Fonction pour exporter le persona en PDF
+        def export_pdf_button_click(
+            first_name_input, last_name_input, age_input, persona_image_output
+        ):
+            pdf_file = generate_pdf_wrapper(
+                first_name_input, last_name_input, age_input, persona_image_output
+            )
+            return pdf_file
+        
+        export_pdf_button.click(
+            fn=export_pdf_button_click,
+            inputs=[first_name_input, last_name_input, age_input, persona_image_output],
+            outputs=gr.File(label="Télécharger le PDF")
+        )
+        
+        # Affichage du résumé du persona
+        persona_output
 
-
+# Fonction pour traiter et afficher le profil du persona
+def process_persona(
+    persona_image_output, first_name_input, last_name_input, age_input, gender_input, marital_status_input,
+    education_level_input, profession_input, income_input, personality_traits_input, values_beliefs_input,
+    motivations_input, hobbies_interests_input, main_responsibilities_input, daily_activities_input,
+    technology_relationship_input, product_related_activities_input, pain_points_input, product_goals_input,
+    usage_scenarios_input, brand_relationship_input, market_segment_input, commercial_objectives_input,
+    visual_codes_input, special_considerations_input, daily_life_input, references_input
+):
+    # Construire le profil du persona à partir des champs saisis
+    persona_profile = f"""
+    <h2>Profil du Persona</h2>
+    <h3>1. Informations de base</h3>
+    <ul>
+    <img src="{persona_image_output}" alt="Persona Image" width="200">
+        <li><strong>Prénom:</strong> {first_name_input}</li>
+        <li><strong>Nom de famille:</strong> {last_name_input}</li>
+        <li><strong>Âge:</strong> {age_input}</li>
+        <li><strong>Genre:</strong> {gender_input}</li>
+        <li><strong>État civil:</strong> {marital_status_input}</li>
+        <li><strong>Niveau d'éducation:</strong> {education_level_input}</li>
+        <li><strong>Profession:</strong> {profession_input}</li>
+        <li><strong>Revenus annuels:</strong> {income_input} €</li>
+        <li><strong>Traits de personnalité:</strong> {personality_traits_input}</li>
+        <li><strong>Valeurs et croyances:</strong> {values_beliefs_input}</li>
+        <li><strong>Motivations intrinsèques:</strong> {motivations_input}</li>
+        <li><strong>Hobbies et intérêts:</strong> {hobbies_interests_input}</li>
+    </ul>
+    <h3>2. Informations liées au design</h3>
+    <ul>
+        <li><strong>Responsabilités principales:</strong> {main_responsibilities_input}</li>
+        <li><strong>Activités journalières:</strong> {daily_activities_input}</li>
+        <li><strong>Relation avec la technologie:</strong> {technology_relationship_input}</li>
+        <li><strong>Tâches liées au produit:</strong> {product_related_activities_input}</li>
+        <li><strong>Points de douleur:</strong> {pain_points_input}</li>
+        <li><strong>Objectifs d’utilisation du produit:</strong> {product_goals_input}</li>
+        <li><strong>Scénarios d’utilisation:</strong> {usage_scenarios_input}</li>
+    </ul>
+    <h3>3. Informations marketing et commerciales</h3>
+    <ul>
+        <li><strong>Relation avec la marque:</strong> {brand_relationship_input}</li>
+        <li><strong>Segment de marché:</strong> {market_segment_input}</li>
+        <li><strong>Objectifs commerciaux:</strong> {commercial_objectives_input}</li>
+    </ul>
+    <h3>4. Graphismes et accessibilité</h3>
+    <ul>
+        <li><strong>Graphiques et codes visuels:</strong> {visual_codes_input}</li>
+        <li><strong>Considérations spéciales:</strong> {special_considerations_input}</li>
+    </ul>
+    <h3>5. Dimensions supplémentaires</h3>
+    <ul>
+        <li><strong>Une journée dans la vie:</strong> {daily_life_input}</li>
+        <li><strong>Références:</strong> {references_input}</li>
+    </ul>
+    """
+    return persona_profile
 
 demo.launch(debug=True)
