@@ -301,9 +301,14 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 if not biases and not advice:
                     return "Aucun biais détecté ou conseils disponibles.", current_count, f"Nombre de mots : {current_count}"
                 
-                content = ""
+                content = "<div style='display: flex; flex-wrap: wrap;'>"
                 for bias, adv in zip(biases, advice):
-                    content += f"**Biais:** {bias}\n\n**Conseil:** {adv}\n\n"
+                    content += f"""
+                    <div style='flex: 1; min-width: 300px; padding: 10px; text-align: center; border: 1px solid lightgray; border-radius: 20px; margin: 5px;'>
+                        <strong>{bias.upper()}</strong><br><br>{adv}
+                    </div>
+                    """
+                content += "</div>"
                 return content, current_count, f"Nombre de mots : {current_count}"
             return gr.update(), previous_count, f"Nombre de mots : {current_count}"  # Conserver l'état précédent sans changement
 
@@ -320,9 +325,14 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             if not biases and not advice:
                 return "Aucun biais détecté ou conseils disponibles.", current_count, f"Nombre de mots : {current_count}"
             
-            content = ""
+            content = "<div style='display: flex; flex-wrap: wrap;'>"
             for bias, adv in zip(biases, advice):
-                content += f"**Biais:** {bias}\n\n**Conseil:** {adv}\n\n"
+                content += f"""
+                <div style='flex: 1; min-width: 300px; padding: 10px; text-align: center; border: 1px solid lightgray; border-radius: 20px; margin: 5px;'>
+                    <strong>{bias.upper()}</strong><br><br>{adv}
+                </div>
+                """
+            content += "</div>"
             return content, current_count, f"Nombre de mots : {current_count}"
 
         # Utilisation du bouton pour déclencher l'analyse des biais
