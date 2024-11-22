@@ -27,7 +27,7 @@ class BiasAnalysisResponse(BaseModel):
 
 # Fonction pour définir la clé API
 def set_openai_api_key(api_key):
-    if api_key:
+    if (api_key):
         os.environ["OPENAI_API_KEY"] = api_key
         global client
         client = OpenAI(api_key=api_key)
@@ -38,20 +38,10 @@ def set_openai_api_key(api_key):
 # Fonction pour analyser les biais dans le texte de l'objectif
 def analyze_biases(objective_text):
     try:
-        prompt = f"""
+        system__prompt = f"""
         Le texte est écrit par un professionnel du marketing qui essaie de créer un persona.
         Analysez le texte suivant à la recherche de biais cognitifs potentiels et donnez des conseils sur la manière de les atténuer.
         Répondez dans le même langage de l'utilisateur.
-        Texte :
-        {objective_text}
-
-        Fournissez votre analyse dans un langage clair et très concis, en deux parties : 
-        1. Analyse des biais cognitifs.
-        2. Conseils pour atténuer ces biais.
-        """
-        system__prompt = f"""
-        Vous êtes un assistant d'analyse de biais cognitifs qui aide les professionnels du marketing à identifier et à atténuer les biais dans leurs objectifs de création de persona.
-        Choisir un biais cognitif dans le texte suivant et fournir un conseil spécifique pour atténuer ce biais.
         Liste de biais cognitifs
 
         Biais attentionnels
@@ -131,9 +121,9 @@ def analyze_biases(objective_text):
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system__prompt},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": objective_text}
             ],
-            temperature=0.2,
+            temperature=0.5,
             max_tokens=800,
             response_format=BiasAnalysisResponse
         )
@@ -147,37 +137,37 @@ def analyze_biases(objective_text):
         return {"error": str(e)}
 
 # Optimiser la génération d'image pour utiliser directement l'URL
-def generate_persona_image(first_name, last_name, age, gender, persona_description, mode):
+def generate_persona_image(first_name, last_name, age, gender, persona_description):
     if not first_name or not last_name or not age or not gender:
         return "Veuillez remplir tous les champs pour générer l'image du persona."
 
     prompt = f"A portrait photograph of a {gender} persona named {first_name} {last_name}, a {age}-year-old individual. {persona_description}. High-quality portrait, natural lighting, neutral background, genuine expression."
     
-    if mode == "OpenAI":
-        try:
-            response = client.images.generate(
-                model="dall-e-3",
-                prompt=prompt,
-                size="1024x1024",
-                quality="standard",
-                n=1,
-            )
-            image_url = response.data[0].url
-            print("Generated image URL:", image_url)
-            
-            # Télécharger l'image et l'enregistrer temporairement
-            response = requests.get(image_url)
-            temp_image = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-            with open(temp_image.name, 'wb') as f:
-                f.write(response.content)
-            return temp_image.name
-        except Exception as e:
-            return {"error": str(e)}
-    elif mode == "Temps réel":
-        return generate_real_time_image(prompt)
+    response = client.images.generate(
+        model="dall-e-3",
+        prompt=prompt,
+        size="1024x1024",
+        quality="standard",
+        n=1,
+    )
+    image_url = response.images[0].url
+
+    print("Generated image URL:", image_url)
+    
+    # Télécharger l'image et l'enregistrer temporairement
+    response = requests.get(image_url)
+    temp_image = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+    with open(temp_image.name, 'wb') as f:
+        f.write(response.content)
+
+    # déclarer une variable globale pour l'image temporaire
+    global temp_image_path
+    temp_image_path = temp_image.name
+
+    return temp_image.name
 
 # Function to assist in creating the detailed profile
-def assist_persona_creation(first_name, last_name, age, personal_history, consumption_preferences, behaviors_habits, assistance_level):
+def assist_persona_creation(first_name, last_name, age):
     prompt = f"""
     Vous êtes un assistant IA aidant à créer des personas marketing détaillés.
     Basé sur les informations fournies, proposez des suggestions pour améliorer le profil du persona et identifiez les biais potentiels.
@@ -185,9 +175,6 @@ def assist_persona_creation(first_name, last_name, age, personal_history, consum
     Informations du persona :
     Nom : {first_name} {last_name}
     Âge : {age}
-    Histoire personnelle : {personal_history}
-    Préférences de consommation : {consumption_preferences}
-    Comportements et habitudes : {behaviors_habits}
 
     Fournissez vos suggestions sous forme de points clairs.
     """
@@ -201,7 +188,7 @@ def assist_persona_creation(first_name, last_name, age, personal_history, consum
     return suggestions
 
 # Remplacer la fonction generate_pdf pour utiliser reportlab
-def generate_pdf(first_name, last_name, age, personal_history, consumption_preferences, behaviors_habits, image_url):
+def generate_pdf(first_name, last_name, age, image_url):
     try:
         temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
         c = canvas.Canvas(temp_pdf.name, pagesize=A4)
@@ -225,121 +212,40 @@ def generate_pdf(first_name, last_name, age, personal_history, consumption_prefe
 
         c.setFont("Helvetica", 12)
         y = height - 130
-        c.drawString(50, y, "Histoire personnelle:")
-        y -= 20
-        c.drawString(50, y, personal_history)
-        y -= 40
-        c.drawString(50, y, "Préférences de consommation:")
-        y -= 20
-        c.drawString(50, y, ", ".join(consumption_preferences))
-        y -= 40
-        c.drawString(50, y, "Comportements et habitudes:")
-        y -= 20
-        c.drawString(50, y, ", ".join(behaviors_habits))
 
         c.save()
         return temp_pdf.name
 
     except Exception as e:
-        return f"Erreur lors de la génération du PDF : {e}"
+        print(f"Erreur lors de la génération du PDF : {e}")
+        return None
 
-def generate_pdf_wrapper(first_name, last_name, age, personal_history, consumption_preferences, behaviors_habits, image_url):
-    pdf_file = generate_pdf(first_name, last_name, age, personal_history, consumption_preferences, behaviors_habits, image_url)
-    return pdf_file
+def generate_pdf_wrapper(first_name, last_name, age, image_url):
+    pdf_file = generate_pdf(first_name, last_name, age, image_url)
+    if pdf_file:
+        return pdf_file
+    else:
+        return "Erreur lors de la génération du PDF."
 
 # Function to review the persona details
-def review_persona(first_name, last_name, age, personal_history, consumption_preferences, behaviors_habits, image_url):
+def review_persona(first_name, last_name, age, image_url):
     html_content = f"""
     <h2>{first_name} {last_name}, Age: {age}</h2>
     <img src="{image_url}" alt="Persona Image" width="200">
-    <h3>Histoire personnelle</h3>
-    <p>{personal_history}</p>
-    <h3>Préférences de consommation</h3>
-    <p>{consumption_preferences}</p>
-    <h3>Comportements et habitudes</h3>
-    <p>{behaviors_habits}</p>
     """
     return html_content
 
-# Initialiser le client pour l'API de génération d'image en temps réel
-image_client = None
-try:
-    image_client = Client("cbensimon/Real-Time-Text-to-Image-SDXL-Lightning")
-    image_client_initialized = True
-except Exception as e:
-    print(f"Erreur lors de l'initialisation du client Gradio: {e}")
-    image_client_initialized = False
-
-# Fonction pour générer une image en temps réel
-def generate_real_time_image(prompt_text, seed=0):
-    if not image_client_initialized:
-        return {"error": "Le client Gradio n'a pas pu être initialisé. Veuillez vérifier votre configuration."}
-    try:
-        result = image_client.predict(prompt_text, seed, api_name="/predict")
-        image_path = result  # Le résultat est un chemin de fichier
-        print("Generated lightning image path:", image_path)
-        
-        # Lire l'image depuis le chemin de fichier et l'enregistrer temporairement
-        with open(image_path, 'rb') as f:
-            image_data = f.read()
-        temp_image = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-        with open(temp_image.name, 'wb') as f:
-            f.write(image_data)
-        return temp_image.name
-    except Exception as e:
-        error_message = str(e)
-        if "exceeded your GPU quota" in error_message:
-            return {"error": "Vous avez dépassé votre quota GPU. Veuillez réessayer plus tard."}
-        print("Error in generate_real_time_image:", error_message)
-        return {"error": error_message}
-
-# Fonction pour générer l'image du persona en fonction du mode sélectionné
-def generate_persona_image(first_name, last_name, age, gender, persona_description, mode):
-    if not first_name or not last_name or not age or not gender:
-        return "Veuillez remplir tous les champs pour générer l'image du persona."
-
-    prompt = f"A portrait photograph of a {gender} persona named {first_name} {last_name}, a {age}-year-old individual. {persona_description}. High-quality portrait, natural lighting, neutral background, genuine expression."
-    
-    if mode == "OpenAI":
-        try:
-            response = client.images.generate(
-                model="dall-e-3",
-                prompt=prompt,
-                size="1024x1024",
-                quality="standard",
-                n=1,
-            )
-            image_url = response.data[0].url
-            print("Generated image URL:", image_url)
-            
-            # Télécharger l'image et l'enregistrer temporairement
-            response = requests.get(image_url)
-            temp_image = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-            with open(temp_image.name, 'wb') as f:
-                f.write(response.content)
-            return temp_image.name
-        except Exception as e:
-            return {"error": str(e)}
-    elif mode == "Temps réel":
-        return generate_real_time_image(prompt)
-
-# Fonction pour remplir automatiquement les champs avec l'IA
-def auto_fill_persona_fields(first_name, last_name, age):
+# Fonction pour affiner les contributions de l'utilisateur et de l'IA
+def refine_persona_details(first_name, last_name, age):
     prompt = f"""
-    Vous êtes un assistant IA qui génère des informations détaillées pour un persona marketing.
+    Vous êtes un assistant IA aidant à affiner les détails d'un persona marketing.
+    Basé sur les informations fournies, proposez des suggestions pour améliorer le profil du persona.
 
-    Générer l'histoire personnelle, les préférences de consommation, et les comportements et habitudes pour un persona nommé {first_name} {last_name}, âgé de {age} ans.
+    Informations du persona :
+    Nom : {first_name} {last_name}
+    Âge : {age}
 
-    Fournissez les informations sous le format suivant:
-
-    Histoire personnelle:
-    [texte]
-
-    Préférences de consommation:
-    [texte]
-
-    Comportements et habitudes:
-    [texte]
+    Fournissez vos suggestions sous forme de points clairs.
     """
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -347,55 +253,9 @@ def auto_fill_persona_fields(first_name, last_name, age):
         temperature=0.7,
         max_tokens=500,
     )
-    content = response.choices[0]['message']['content'].strip()
-    # Traitement de la réponse pour extraire les sections
-    result = {
-        'personal_history': '',
-        'consumption_preferences': '',
-        'behaviors_habits': ''
-    }
-    sections = content.split('\n\n')
-    for section in sections:
-        if "Histoire personnelle:" in section:
-            result['personal_history'] = section.replace("Histoire personnelle:", "").strip()
-        elif "Préférences de consommation:" in section:
-            result['consumption_preferences'] = section.replace("Préférences de consommation:", "").strip()
-        elif "Comportements et habitudes:" in section:
-            result['behaviors_habits'] = section.replace("Comportements et habitudes:", "").strip()
-    return result
+    suggestions = response.choices[0]['message']['content'].strip()
+    return suggestions
 
-# Fonction pour mettre à jour l'interface en fonction du niveau d'assistance
-def update_step3_ui(assistance_level, first_name, last_name, age):
-    if assistance_level == "Manuel":
-        return {
-            generate_suggestions_button: gr.update(visible=False),
-            personal_history_input: gr.update(value="", interactive=True),
-            consumption_preferences_input: gr.update(value="", interactive=True),
-            behaviors_habits_input: gr.update(value="", interactive=True)
-        }
-    elif assistance_level == "Semi-guidé":
-        return {
-            generate_suggestions_button: gr.update(visible=True),
-            personal_history_input: gr.update(interactive=True),
-            consumption_preferences_input: gr.update(interactive=True),
-            behaviors_habits_input: gr.update(interactive=True)
-        }
-    elif assistance_level == "Entièrement guidé":
-        auto_fill_values = auto_fill_persona_fields(first_name, last_name, age)
-        return {
-            generate_suggestions_button: gr.update(visible=False),
-            personal_history_input: gr.update(value=auto_fill_values['personal_history'], interactive=False),
-            consumption_preferences_input: gr.update(value=auto_fill_values['consumption_preferences'], interactive=False),
-            behaviors_habits_input: gr.update(value=auto_fill_values['behaviors_habits'], interactive=False)
-        }
-
-# Fonction pour sauvegarder les informations du persona
-def sauvegarder(personal_history, consumption_preferences, behaviors_habits):
-    # Implémentation de la sauvegarde (par exemple, enregistrement dans un fichier)
-    # Pour cet exemple, nous renvoyons simplement un message de confirmation
-    return "Les informations ont été sauvegardées avec succès."
-
-# Interface utilisateur Gradio avec des blocs dynamiques pour les biais et la génération d'image en temps réel
 with gr.Blocks(theme=gr.themes.Citrus()) as demo:
     gr.Markdown("# Assistant de création de persona")
 
@@ -436,37 +296,37 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             if realtime == "Activée" and current_count - previous_count >= 10:
                 analysis_result = analyze_biases(objective_text)
                 if "error" in analysis_result:
-                    return f"Erreur: {analysis_result['error']}", previous_count, f"Nombre de mots : {current_count}"
+                    return f"Erreur: {analysis_result['error']}", current_count, f"Nombre de mots : {current_count}"
                 
                 biases = analysis_result.get("biases", [])
                 advice = analysis_result.get("advice", [])
                 
-                if not biases or not advice:
+                if not biases and not advice:
                     return "Aucun biais détecté ou conseils disponibles.", current_count, f"Nombre de mots : {current_count}"
                 
                 content = ""
                 for bias, adv in zip(biases, advice):
-                    content += f"{bias}\n\n**Conseil:** {adv}\n\n"
+                    content += f"**Biais:** {bias}\n\n**Conseil:** {adv}\n\n"
                 return content, current_count, f"Nombre de mots : {current_count}"
-            return bias_analysis_output, previous_count, f"Nombre de mots : {current_count}"  # Conserver l'état précédent sans changement
+            return gr.update(), previous_count, f"Nombre de mots : {current_count}"  # Conserver l'état précédent sans changement
 
         # Utilisation du bouton pour déclencher l'analyse des biais
         def analyze_button_click(objective_text, previous_count, realtime):
             current_count = len(objective_text.split())
             analysis_result = analyze_biases(objective_text)
             if "error" in analysis_result:
-                return f"Erreur: {analysis_result['error']}", previous_count, f"Nombre de mots : {current_count}"
+                return f"Erreur: {analysis_result['error']}", current_count, f"Nombre de mots : {current_count}"
             
             biases = analysis_result.get("biases", [])
             advice = analysis_result.get("advice", [])
             
-            if not biases or not advice:
-                return "Aucun biais détecté ou conseils disponibles.", previous_count, f"Nombre de mots : {current_count}"
+            if not biases and not advice:
+                return "Aucun biais détecté ou conseils disponibles.", current_count, f"Nombre de mots : {current_count}"
             
             content = ""
             for bias, adv in zip(biases, advice):
-                content += f"{bias}\n\n**Conseil:** {adv}\n\n"
-            return content, previous_count, f"Nombre de mots : {current_count}"
+                content += f"**Biais:** {bias}\n\n**Conseil:** {adv}\n\n"
+            return content, current_count, f"Nombre de mots : {current_count}"
 
         # Utilisation du bouton pour déclencher l'analyse des biais
         analyze_button.click(
@@ -499,29 +359,14 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 age_input = gr.Slider(label="Âge", minimum=18, maximum=100, step=1)
                 gender_input = gr.Radio(label="Genre", choices=["homme", "femme"], value="homme")
                 persona_description_input = gr.Textbox(label="Description du persona", lines=3)
-                image_mode = gr.Radio(label="Mode de génération d'image", choices=["OpenAI", "Temps réel"], value="OpenAI")
                 generate_image_button = gr.Button("Générer l'image du persona")
             with gr.Column(scale=1):
                 persona_image_output = gr.Image(label="Image du persona")
         
         generate_image_button.click(
             fn=generate_persona_image,
-            inputs=[first_name_input, last_name_input, age_input, gender_input, persona_description_input, image_mode],
+            inputs=[first_name_input, last_name_input, age_input, gender_input, persona_description_input],
             outputs=persona_image_output
-        )
-
-        # Génération d'image en temps réel tous les deux mots ajoutés
-        def generate_image_realtime(first_name, last_name, age, gender, persona_description, previous_count, mode):
-            current_count = len(persona_description.split())
-            if current_count - previous_count >= 2:
-                image_url = generate_persona_image(first_name, last_name, age, gender, persona_description, mode)
-                return image_url, current_count
-            return persona_image_output, previous_count
-
-        persona_description_input.change(
-            fn=generate_image_realtime,
-            inputs=[first_name_input, last_name_input, age_input, gender_input, persona_description_input, word_count_state, image_mode],
-            outputs=[persona_image_output, word_count_state]
         )
 
     with gr.Tab("Étape 3: Profil détaillé du persona"):
@@ -529,8 +374,6 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
 
         # Section 1: Informations de base
         with gr.Accordion("1. Informations de base", open=True):
-            age_input = gr.Slider(label="Âge", minimum=0, maximum=100, step=1)
-            gender_input = gr.Radio(label="Genre", choices=["Homme", "Femme", "Autre"])
             marital_status_input = gr.Dropdown(label="État civil", choices=["Célibataire", "En couple", "Marié(e)", "Divorcé(e)", "Veuf(ve)"])
             education_level_input = gr.Dropdown(label="Niveau d'éducation", choices=["Études secondaires", "Bachelier", "Master", "Doctorat", "Autre"])
             profession_input = gr.Textbox(label="Profession")
@@ -582,6 +425,24 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             daily_life_input = gr.Textbox(label="Une journée dans la vie", lines=3)
             references_input = gr.Textbox(label="Références (sources de données)", lines=2)
         
+        # Bouton pour affiner les contributions
+        refine_button = gr.Button("Affiner les contributions")
+        
+        # Zone de sortie pour les suggestions affinées
+        refined_suggestions_output = gr.Markdown(label="Suggestions affinées")
+
+        # Fonction pour traiter et afficher les suggestions affinées
+        def process_refinement(first_name, last_name, age):
+            suggestions = refine_persona_details(first_name, last_name, age)
+            return suggestions
+        
+        # Associer le bouton à la fonction de traitement
+        refine_button.click(
+            fn=process_refinement,
+            inputs=[first_name_input, last_name_input, age_input],
+            outputs=refined_suggestions_output
+        )
+
         # Bouton pour traiter et afficher le profil du persona
         process_button = gr.Button("Enregistrer le profil du persona")
         
@@ -590,6 +451,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
         
         # Fonction pour traiter et afficher le profil du persona
         def process_persona(
+            persona_image_output, first_name_input, last_name_input,
             age_input, gender_input, marital_status_input, education_level_input, profession_input, income_input,
             personality_traits_input, values_beliefs_input, motivations_input, hobbies_interests_input,
             main_responsibilities_input, daily_activities_input, technology_relationship_input,
@@ -603,6 +465,9 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             <h2>Profil du Persona</h2>
             <h3>1. Informations de base</h3>
             <ul>
+            <img src="{persona_image_output}" alt="Persona Image" width="200">
+                <li><strong>Prénom:</strong> {first_name_input}</li>
+                <li><strong>Nom de famille:</strong> {last_name_input}</li>
                 <li><strong>Âge:</strong> {age_input}</li>
                 <li><strong>Genre:</strong> {gender_input}</li>
                 <li><strong>État civil:</strong> {marital_status_input}</li>
@@ -640,14 +505,20 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 <li><strong>Une journée dans la vie:</strong> {daily_life_input}</li>
                 <li><strong>Références:</strong> {references_input}</li>
             </ul>
+            <button id="export-pdf-button">Exporter en PDF</button>
             """
             return persona_profile
+
+        # Fonction pour générer le PDF et le retourner comme fichier téléchargeable
+        def export_pdf(first_name, last_name, age, image_url):
+            pdf_file = generate_pdf(first_name, last_name, age, image_url)
+            return pdf_file
         
         # Associer le bouton à la fonction de traitement
         process_button.click(
             fn=process_persona,
             inputs=[
-                age_input, gender_input, marital_status_input, education_level_input, profession_input, income_input,
+                persona_image_output, first_name_input, last_name_input, age_input, gender_input, marital_status_input, education_level_input, profession_input, income_input,
                 personality_traits_input, values_beliefs_input, motivations_input, hobbies_interests_input,
                 main_responsibilities_input, daily_activities_input, technology_relationship_input,
                 product_related_activities_input, pain_points_input, product_goals_input, usage_scenarios_input,
@@ -656,16 +527,6 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 daily_life_input, references_input
             ],
             outputs=persona_output
-        )
-
-    with gr.Tab("Étape 4: Génération du PDF"):
-        gr.Markdown("### Génération du PDF du persona")
-        generate_pdf_button = gr.Button("Générer le PDF")
-        pdf_output = gr.File(label="Télécharger le PDF")
-        generate_pdf_button.click(
-            fn=generate_pdf_wrapper,
-            inputs=[first_name_input, last_name_input, age_input, personal_history_input, consumption_preferences_input, behaviors_habits_input, persona_image_output],
-            outputs=pdf_output
         )
 
 
