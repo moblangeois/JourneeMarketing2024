@@ -417,6 +417,19 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
         realtime_analysis = gr.Radio(label="Analyse en temps réel", choices=["Activée", "Désactivée"], value="Désactivée")
         word_count_display = gr.Markdown()  # Ajout d'un affichage pour le compteur de mots
 
+        # Définir les scénarios de suggestion
+        suggestion1 = "Je souhaite créer un persona pour promouvoir un nouveau service de livraison écologique destiné aux jeunes professionnels urbains soucieux de l'environnement. Nous avons réalisé une étude de marché et identifié un besoin pour des solutions de livraison plus durables et rapides. Pour cela, nous voulons créer un persona qui incarne ces valeurs et besoins. Plus spécifiquement, nous ciblons les personnes âgées de 25 à 35 ans, vivant dans des zones urbaines, travaillant à temps plein et ayant un intérêt pour les questions environnementales."
+        suggestion2 = "J'envisage de développer une application mobile de fitness personnalisée pour les seniors actifs qui cherchent à maintenir une vie saine et sociale. L'application proposera des programmes d'entraînement adaptés aux besoins et aux capacités des seniors, ainsi que des fonctionnalités pour suivre les progrès et rester motivé. Le persona devrait refléter les besoins et les préférences des seniors actifs, en mettant l'accent sur la facilité d'utilisation, la convivialité et la personnalisation. Nous visons à créer une expérience positive et engageante pour les utilisateurs."
+
+        # Ajouter les boutons de suggestion
+        with gr.Row():
+            suggestion_button1 = gr.Button("Suggestion 1")
+            suggestion_button2 = gr.Button("Suggestion 2")
+
+        # Définir les actions des boutons pour remplir le champ objective_input
+        suggestion_button1.click(fn=lambda: suggestion1, inputs=[], outputs=objective_input)
+        suggestion_button2.click(fn=lambda: suggestion2, inputs=[], outputs=objective_input)
+
         # Fonction pour afficher dynamiquement les biais et les conseils
         def display_biases_and_advice(objective_text, previous_count, realtime):
             current_count = len(objective_text.split())
@@ -511,77 +524,138 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             outputs=[persona_image_output, word_count_state]
         )
 
-    with gr.Tab("Étape 3: Profil détaillé du Persona"):
-        assistance_level = gr.Radio(
-            label="Niveau d'assistance de l'IA",
-            choices=["Entièrement guidé", "Semi-guidé", "Manuel"],
-            value="Semi-guidé"
-        )
-        with gr.Row():
-            with gr.Column():
-                personal_history_input = gr.Textbox(label="Histoire personnelle", lines=3)
-                consumption_preferences_input = gr.Textbox(label="Préférences de consommation", lines=2)
-                behaviors_habits_input = gr.Textbox(label="Comportements et habitudes", lines=2)
-                generate_suggestions_button = gr.Button("Générer des suggestions")
-                sauvegarder_button = gr.Button("Sauvegarder")  # Bouton "Sauvegarder" ajouté
-            with gr.Column():
-                persona_visualization_output = gr.HTML(label="Visualisation du Persona")
-        
-        # Statut de la sauvegarde
-        sauvegarde_statut = gr.Textbox(label="Statut", interactive=False)
+    with gr.Tab("Étape 3: Profil détaillé du persona"):
+        gr.Markdown("### Étape 3: Profil détaillé du persona")
 
-        # Mise à jour de l'interface lors du changement du niveau d'assistance
-        assistance_level.change(
-            fn=update_step3_ui,
-            inputs=[assistance_level, first_name_input, last_name_input, age_input],
-            outputs=[generate_suggestions_button, personal_history_input, consumption_preferences_input, behaviors_habits_input]
-        )
-
-        # Utiliser un DataFrame pour afficher les suggestions
-        suggestions_output = gr.Dataframe(headers=["Suggestion"], label="Suggestions de l'IA")
-        bias_highlight_output = gr.HTML(label="Biais détectés")
-
-        # Fonction pour générer les suggestions et gérer les biais
-        def generate_and_display_suggestions(first_name, last_name, age, personal_history, consumption_preferences, behaviors_habits, assistance_level):
-            data = {
-                'first_name': first_name,
-                'last_name': last_name,
-                'age': age,
-                'personal_history': personal_history,
-                'consumption_preferences': consumption_preferences,
-                'behaviors_habits': behaviors_habits
-            }
-            suggestions = assist_persona_creation(
-                first_name, last_name, age,
-                personal_history, consumption_preferences, behaviors_habits,
-                assistance_level
+        # Section 1: Informations de base
+        with gr.Accordion("1. Informations de base", open=True):
+            age_input = gr.Slider(label="Âge", minimum=0, maximum=100, step=1)
+            gender_input = gr.Radio(label="Genre", choices=["Homme", "Femme", "Autre"])
+            marital_status_input = gr.Dropdown(label="État civil", choices=["Célibataire", "En couple", "Marié(e)", "Divorcé(e)", "Veuf(ve)"])
+            education_level_input = gr.Dropdown(label="Niveau d'éducation", choices=["Études secondaires", "Bachelier", "Master", "Doctorat", "Autre"])
+            profession_input = gr.Textbox(label="Profession")
+            income_input = gr.Number(label="Revenus annuels (€)")
+            personality_traits_input = gr.Textbox(
+                label="Traits de personnalité (introverti/extraverti, etc.)",
+                lines=2,
+                info="Ensemble des caractéristiques qui définissent l'individualité d'une personne, incluant ses comportements stables et uniques."
             )
-            biases = detect_biases(suggestions)
-            highlighted_suggestions = highlight_biases(suggestions, biases)
-            # Préparation des suggestions pour affichage
-            suggestions_list = []
-            for suggestion in suggestions.split('\n'):
-                if suggestion.strip():
-                    suggestions_list.append([suggestion.strip()])
-            suggestions_df = pd.DataFrame(suggestions_list, columns=["Suggestion"])
-            visualization = generate_persona_visualization(data)
-            return suggestions_df, highlighted_suggestions, visualization
-
-        generate_suggestions_button.click(
-            fn=generate_and_display_suggestions,
+            values_beliefs_input = gr.Textbox(label="Valeurs et croyances", lines=2)
+            motivations_input = gr.Textbox(
+                label="Motivations intrinsèques",
+                lines=2,
+                info="[Motivations internes qui poussent une personne à agir par plaisir ou satisfaction personnelle](https://fr.wikipedia.org/wiki/Motivation), sans attendre de récompenses externes."
+            )
+            hobbies_interests_input = gr.Textbox(label="Hobbies et intérêts", lines=2)
+        
+        # Section 2: Informations liées au design
+        with gr.Accordion("2. Informations liées au design", open=False):
+            main_responsibilities_input = gr.Textbox(label="Responsabilités principales", lines=2)
+            daily_activities_input = gr.Textbox(label="Activités journalières", lines=2)
+            technology_relationship_input = gr.Textbox(label="Relation avec la technologie", lines=2)
+            product_related_activities_input = gr.Textbox(label="Tâches liées au produit", lines=2)
+            pain_points_input = gr.Textbox(
+                label="Points de douleur (pain points)",
+                lines=2,
+                info="Problèmes ou frustrations auxquels un client peut être confronté lors de son parcours d'achat, tels qu'un mauvais service ou des délais d'attente excessifs."
+            )
+            product_goals_input = gr.Textbox(label="Objectifs d’utilisation du produit", lines=2)
+            usage_scenarios_input = gr.Textbox(label="Scénarios d’utilisation", lines=2)
+        
+        # Section 3: Informations marketing et commerciales
+        with gr.Accordion("3. Informations marketing et commerciales", open=False):
+            brand_relationship_input = gr.Textbox(label="Relation avec la marque", lines=2)
+            market_segment_input = gr.Textbox(label="Segment de marché", lines=2)
+            commercial_objectives_input = gr.Textbox(
+                label="Objectifs commerciaux",
+                lines=2,
+                info="Objectifs clairs et mesurables que l'on souhaite atteindre, souvent décrits selon la méthode [SMART](https://fr.wikipedia.org/wiki/Objectifs_et_indicateurs_SMART) pour assurer leur réalisabilité."
+            )
+        
+        # Section 4: Graphismes et accessibilité
+        with gr.Accordion("4. Graphismes et accessibilité", open=False):
+            visual_codes_input = gr.Textbox(label="Graphiques et codes visuels", lines=2)
+            special_considerations_input = gr.Textbox(label="Considérations spéciales (accessibilité)", lines=2)
+        
+        # Section 5: Dimensions supplémentaires
+        with gr.Accordion("5. Dimensions supplémentaires", open=False):
+            daily_life_input = gr.Textbox(label="Une journée dans la vie", lines=3)
+            references_input = gr.Textbox(label="Références (sources de données)", lines=2)
+        
+        # Bouton pour traiter et afficher le profil du persona
+        process_button = gr.Button("Enregistrer le profil du persona")
+        
+        # Zone de sortie pour l'aperçu du persona
+        persona_output = gr.HTML(label="Aperçu du persona")
+        
+        # Fonction pour traiter et afficher le profil du persona
+        def process_persona(
+            age_input, gender_input, marital_status_input, education_level_input, profession_input, income_input,
+            personality_traits_input, values_beliefs_input, motivations_input, hobbies_interests_input,
+            main_responsibilities_input, daily_activities_input, technology_relationship_input,
+            product_related_activities_input, pain_points_input, product_goals_input, usage_scenarios_input,
+            brand_relationship_input, market_segment_input, commercial_objectives_input,
+            visual_codes_input, special_considerations_input,
+            daily_life_input, references_input
+        ):
+            # Construire le profil du persona à partir des champs saisis
+            persona_profile = f"""
+            <h2>Profil du Persona</h2>
+            <h3>1. Informations de base</h3>
+            <ul>
+                <li><strong>Âge:</strong> {age_input}</li>
+                <li><strong>Genre:</strong> {gender_input}</li>
+                <li><strong>État civil:</strong> {marital_status_input}</li>
+                <li><strong>Niveau d'éducation:</strong> {education_level_input}</li>
+                <li><strong>Profession:</strong> {profession_input}</li>
+                <li><strong>Revenus annuels:</strong> {income_input} €</li>
+                <li><strong>Traits de personnalité:</strong> {personality_traits_input}</li>
+                <li><strong>Valeurs et croyances:</strong> {values_beliefs_input}</li>
+                <li><strong>Motivations intrinsèques:</strong> {motivations_input}</li>
+                <li><strong>Hobbies et intérêts:</strong> {hobbies_interests_input}</li>
+            </ul>
+            <h3>2. Informations liées au design</h3>
+            <ul>
+                <li><strong>Responsabilités principales:</strong> {main_responsibilities_input}</li>
+                <li><strong>Activités journalières:</strong> {daily_activities_input}</li>
+                <li><strong>Relation avec la technologie:</strong> {technology_relationship_input}</li>
+                <li><strong>Tâches liées au produit:</strong> {product_related_activities_input}</li>
+                <li><strong>Points de douleur:</strong> {pain_points_input}</li>
+                <li><strong>Objectifs d’utilisation du produit:</strong> {product_goals_input}</li>
+                <li><strong>Scénarios d’utilisation:</strong> {usage_scenarios_input}</li>
+            </ul>
+            <h3>3. Informations marketing et commerciales</h3>
+            <ul>
+                <li><strong>Relation avec la marque:</strong> {brand_relationship_input}</li>
+                <li><strong>Segment de marché:</strong> {market_segment_input}</li>
+                <li><strong>Objectifs commerciaux:</strong> {commercial_objectives_input}</li>
+            </ul>
+            <h3>4. Graphismes et accessibilité</h3>
+            <ul>
+                <li><strong>Graphiques et codes visuels:</strong> {visual_codes_input}</li>
+                <li><strong>Considérations spéciales:</strong> {special_considerations_input}</li>
+            </ul>
+            <h3>5. Dimensions supplémentaires</h3>
+            <ul>
+                <li><strong>Une journée dans la vie:</strong> {daily_life_input}</li>
+                <li><strong>Références:</strong> {references_input}</li>
+            </ul>
+            """
+            return persona_profile
+        
+        # Associer le bouton à la fonction de traitement
+        process_button.click(
+            fn=process_persona,
             inputs=[
-                first_name_input, last_name_input, age_input,
-                personal_history_input, consumption_preferences_input, behaviors_habits_input,
-                assistance_level
+                age_input, gender_input, marital_status_input, education_level_input, profession_input, income_input,
+                personality_traits_input, values_beliefs_input, motivations_input, hobbies_interests_input,
+                main_responsibilities_input, daily_activities_input, technology_relationship_input,
+                product_related_activities_input, pain_points_input, product_goals_input, usage_scenarios_input,
+                brand_relationship_input, market_segment_input, commercial_objectives_input,
+                visual_codes_input, special_considerations_input,
+                daily_life_input, references_input
             ],
-            outputs=[suggestions_output, bias_highlight_output, persona_visualization_output]
-        )
-
-        # Action du bouton "Sauvegarder"
-        sauvegarder_button.click(
-            fn=sauvegarder,
-            inputs=[personal_history_input, consumption_preferences_input, behaviors_habits_input],
-            outputs=sauvegarde_statut
+            outputs=persona_output
         )
 
     with gr.Tab("Étape 4: Génération du PDF"):
