@@ -13,6 +13,7 @@ from io import BytesIO  # Ajouté pour gérer BytesIO
 from gradio_client import Client
 from uuid import uuid4  # Pour identifier les suggestions
 import pandas as pd  # Pour utiliser un DataFrame
+import markdown
 
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
@@ -138,7 +139,7 @@ def analyze_biases(objective_text):
 
 # Optimiser la génération d'image pour utiliser directement l'URL
 def generate_persona_image(first_name, last_name, age, gender, persona_description,
-                           skin_color, eye_color, hair_style, hair_color, facial_features,
+                           skin_color, eye_color, hair_style, hair_color, facial_expression,
                            posture, clothing_style, accessories):
     if not first_name or not last_name or not age or not gender:
         return "Veuillez remplir tous les champs pour générer l'image du persona."
@@ -147,15 +148,17 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
     
     # Ajouter les nouvelles informations au prompt
     if skin_color:
-        prompt += f" Skin tone: {skin_color}."
+        skin_color_eng = skin_color_mapping.get(skin_color, skin_color)
+        prompt += f" Skin tone: {skin_color_eng}."
     if eye_color:
-        prompt += f" Eye color: {eye_color}."
+        eye_color_eng = eye_color_mapping.get(eye_color, eye_color)
+        prompt += f" Eye color: {eye_color_eng}."
     if hair_style:
-        prompt += f" Hairstyle: {hair_style}."
+        hair_style_eng = hair_style_mapping.get(hair_style, hair_style)
+        prompt += f" Hairstyle: {hair_style_eng}."
     if hair_color:
-        prompt += f" Hair color: {hair_color}."
-    if facial_features:
-        prompt += f" Facial features: {facial_features}."
+        hair_color_eng = hair_color_mapping.get(hair_color, hair_color)
+        prompt += f" Hair color: {hair_color_eng}."
     if facial_expression:
         facial_expression_eng = facial_expression_mapping.get(facial_expression, facial_expression)
         prompt += f" Facial expression: {facial_expression_eng}."
@@ -163,9 +166,11 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
         posture_eng = posture_mapping.get(posture, posture)
         prompt += f" Posture: {posture_eng}."
     if clothing_style:
-        prompt += f" Clothing style: {clothing_style}."
+        clothing_style_eng = clothing_style_mapping.get(clothing_style, clothing_style)
+        prompt += f" Clothing style: {clothing_style_eng}."
     if accessories:
-        prompt += f" Accessories: {accessories}."
+        accessories_eng = accessories_mapping.get(accessories, accessories)
+        prompt += f" Accessories: {accessories_eng}."
     
     prompt += f" {persona_description}."
     
@@ -176,6 +181,7 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
         n=1,
     )
     image_url = response.data[0].url
+    return image_url
     
     # Télécharger l'image et l'enregistrer temporairement
     response = requests.get(image_url)
@@ -188,27 +194,6 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
     temp_image_path = temp_image.name
 
     return temp_image.name
-
-# Function to assist in creating the detailed profile
-def assist_persona_creation(first_name, last_name, age):
-    prompt = f"""
-    Vous êtes un assistant IA aidant à créer des personas marketing détaillés.
-    Basé sur les informations fournies, proposez des suggestions pour améliorer le profil du persona et identifiez les biais potentiels.
-
-    Informations du persona :
-    Nom : {first_name} {last_name}
-    Âge : {age}
-
-    Fournissez vos suggestions sous forme de points clairs.
-    """
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
-        max_tokens=500,
-    )
-    suggestions = response.choices[0]['message']['content'].strip()
-    return suggestions
 
 # Remplacer la fonction generate_pdf pour utiliser reportlab
 def generate_pdf(first_name, last_name, age, image_url):
@@ -250,41 +235,37 @@ def generate_pdf_wrapper(first_name, last_name, age, image_url):
     else:
         return "Erreur lors de la génération du PDF."
 
-# Function to review the persona details
-def review_persona(first_name, last_name, age, image_url):
-    html_content = f"""
-    <h2>{first_name} {last_name}, Age: {age}</h2>
-    <img src="{image_url}" alt="Persona Image" width="200">
-    """
-    return html_content
-
 # Fonction pour affiner les contributions de l'utilisateur et de l'IA
 def refine_persona_details(first_name, last_name, age, field_name, field_value, biases, marketing_objectives):
-    prompt = f"""
-    Vous êtes un assistant IA aidant à affiner les détails d'un seul aspect persona marketing.
-    Ne traitez que le champ suivant : {field_name}
+    system_prompt = f"""
+    Vous êtes un assistant IA aidant à affiner les détails d'un persona marketing.
+    Ne traitez que le champ suivant : {field_name}.
     Basé sur les informations fournies, proposez des suggestions pour améliorer le profil du persona.
-    S'il n'y a pas d'informations spécifiques, indiquez qu'il faudrait plus de détails.
+    S'il n'y a pas d'informations spécifiques, indiquez qu'il faut plus de détails.
+    Soyez extrêmement concis et clair.
 
     Informations du persona :
     Nom : {first_name} {last_name}
     Âge : {age}
-    {field_name} : {field_value}
 
-    Biais identifiés :
+    Objectifs marketing initiaux :
+    {marketing_objectives}
+
+    Biais identifiés lors de la formulation de ces objectifs :
     {biases}
 
-    Objectifs marketing :
-    {marketing_objectives}
+    Étape actuelle : Affinage des détails du persona.
     """
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"""{field_name} : {field_value}"""}],
         temperature=0.2,
-        max_tokens=500,
+        max_tokens=150,
     )
     suggestions = response.choices[0].message.content.strip()
-    return suggestions
+    suggestions_html = markdown.markdown(suggestions)
+    gr.Info(suggestions_html, duration=30)
 
 # Ajouter les dictionnaires de correspondance
 posture_mapping = {
@@ -462,9 +443,44 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 age_input = gr.Slider(label="Âge", minimum=18, maximum=100, step=1)
                 gender_input = gr.Radio(label="Genre", choices=["homme", "femme"], value="homme")
                 persona_description_input = gr.Textbox(label="Description du persona (en anglais)", lines=1)
-                generate_image_button = gr.Button("Générer l'image du persona")
+                generate_image_button = gr.Button("Générer l'image du persona", elem_id="generate_image_button")
             with gr.Column(scale=1):
                 persona_image_output = gr.Image(label="Image du persona")
+        
+        # Ajouter une infobulle sur les biais algorithmiques
+        gr.HTML("""
+        <style>
+            #generate_image_button {
+                position: relative;
+            }
+            #generate_image_button::after {
+                content: "Attention : Les algorithmes peuvent introduire des biais dans les images générées. Veuillez vérifier les résultats attentivement.";
+                position: absolute;
+                background: #f9f9f9;
+                border: 1px solid #ccc;
+                padding: 5px;
+                border-radius: 5px;
+                top: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                white-space: normal;
+                z-index: 1000;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.5s ease-in-out, visibility 0.5s;
+                width: max-content;
+                max-width: 300px;
+            }
+            #generate_image_button:hover::after {
+                visibility: visible;
+                opacity: 0;
+                transition-delay: 1.5s;
+            }
+            #generate_image_button:hover::after {
+                opacity: 1;
+            }
+        </style>
+        """)
         
         # Ajouter une liste accordéon pour les détails du prompt DALL-E 3
         with gr.Accordion("Détails du prompt DALL-E 3"):
@@ -501,7 +517,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
 
         # Fonction pour réinitialiser les champs du formulaire
         def reset_form():
-            return [""] * 8  # Le nombre de champs à réinitialiser
+            return [""] * 8  # RLe nombre de champs à réinitialiser
 
         # Associer le bouton de réinitialisation à la fonction reset_form
         reset_button.click(
@@ -520,212 +536,187 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
         with gr.Accordion("1. Informations de base", open=True):
             with gr.Row():
                 marital_status_input = gr.Dropdown(label="État civil", choices=["Célibataire", "En couple", "Marié(e)", "Divorcé(e)", "Veuf(ve)"])
-                refine_marital_status_button = gr.Button("Affiner", scale=0.2)
             with gr.Row():
                 education_level_input = gr.Dropdown(label="Niveau d'éducation", choices=["Études secondaires", "Bachelier", "Master", "Doctorat", "Autre"])
-                refine_education_level_button = gr.Button("Affiner", scale=0.2)
             with gr.Row():
                 profession_input = gr.Textbox(label="Profession")
-                refine_profession_button = gr.Button("Affiner", scale=0.2)
             with gr.Row():
                 income_input = gr.Number(label="Revenus annuels (€)")
-                refine_income_button = gr.Button("Affiner", scale=0.2)
             with gr.Row():
                 personality_traits_input = gr.Textbox(
                     label="Traits de personnalité (introverti/extraverti, etc.)",
-                    lines=2,
+                    lines=1,
                     info="Ensemble des caractéristiques qui définissent l'individualité d'une personne, incluant ses comportements stables et uniques."
                 )
-                refine_personality_traits_button = gr.Button("Affiner", scale=0.2)
+                refine_personality_traits_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
-                values_beliefs_input = gr.Textbox(label="Valeurs et croyances", lines=2)
-                refine_values_beliefs_button = gr.Button("Affiner", scale=0.2)
+                values_beliefs_input = gr.Textbox(label="Valeurs et croyances", lines=1)
+                refine_values_beliefs_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
                 motivations_input = gr.Textbox(
                     label="Motivations intrinsèques",
-                    lines=2,
+                    lines=1,
                     info="[Motivations internes qui poussent une personne à agir par plaisir ou satisfaction personnelle](https://fr.wikipedia.org/wiki/Motivation), sans attendre de récompenses externes."
                 )
-                refine_motivations_button = gr.Button("Affiner", scale=0.2)
+                refine_motivations_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
-                hobbies_interests_input = gr.Textbox(label="Hobbies et intérêts", lines=2)
-                refine_hobbies_interests_button = gr.Button("Affiner", scale=0.2)
+                hobbies_interests_input = gr.Textbox(label="Hobbies et intérêts", lines=1)
+                refine_hobbies_interests_button = gr.Button("Affiner", scale=0.05)
 
         # Section 2: Informations liées au design
         with gr.Accordion("2. Informations liées au design", open=False):
             with gr.Row():
-                main_responsibilities_input = gr.Textbox(label="Responsabilités principales", lines=2)
-                refine_main_responsibilities_button = gr.Button("Affiner", scale=0.2)
+                main_responsibilities_input = gr.Textbox(label="Responsabilités principales", lines=1)
+                refine_main_responsibilities_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
-                daily_activities_input = gr.Textbox(label="Activités journalières", lines=2)
-                refine_daily_activities_button = gr.Button("Affiner", scale=0.2)
+                daily_activities_input = gr.Textbox(label="Activités journalières", lines=1)
+                refine_daily_activities_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
-                technology_relationship_input = gr.Textbox(label="Relation avec la technologie", lines=2)
-                refine_technology_relationship_button = gr.Button("Affiner", scale=0.2)
+                technology_relationship_input = gr.Textbox(label="Relation avec la technologie", lines=1)
+                refine_technology_relationship_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
-                product_related_activities_input = gr.Textbox(label="Tâches liées au produit", lines=2)
-                refine_product_related_activities_button = gr.Button("Affiner", scale=0.2)
+                product_related_activities_input = gr.Textbox(label="Tâches liées au produit", lines=1)
+                refine_product_related_activities_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
                 pain_points_input = gr.Textbox(
                     label="Points de douleur (pain points)",
-                    lines=2,
+                    lines=1,
                     info="Problèmes ou frustrations auxquels un client peut être confronté lors de son parcours d'achat, tels qu'un mauvais service ou des délais d'attente excessifs."
                 )
-                refine_pain_points_button = gr.Button("Affiner", scale=0.2)
+                refine_pain_points_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
-                product_goals_input = gr.Textbox(label="Objectifs d’utilisation du produit", lines=2)
-                refine_product_goals_button = gr.Button("Affiner", scale=0.2)
+                product_goals_input = gr.Textbox(label="Objectifs d’utilisation du produit", lines=1)
+                refine_product_goals_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
-                usage_scenarios_input = gr.Textbox(label="Scénarios d’utilisation", lines=2)
-                refine_usage_scenarios_button = gr.Button("Affiner", scale=0.2)
+                usage_scenarios_input = gr.Textbox(label="Scénarios d’utilisation", lines=1)
+                refine_usage_scenarios_button = gr.Button("Affiner", scale=0.05)
 
         # Section 3: Informations marketing et commerciales
         with gr.Accordion("3. Informations marketing et commerciales", open=False):
             with gr.Row():
-                brand_relationship_input = gr.Textbox(label="Relation avec la marque", lines=2)
-                refine_brand_relationship_button = gr.Button("Affiner", scale=0.2)
+                brand_relationship_input = gr.Textbox(label="Relation avec la marque", lines=1)
+                refine_brand_relationship_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
-                market_segment_input = gr.Textbox(label="Segment de marché", lines=2)
-                refine_market_segment_button = gr.Button("Affiner", scale=0.2)
+                market_segment_input = gr.Textbox(label="Segment de marché", lines=1)
+                refine_market_segment_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
                 commercial_objectives_input = gr.Textbox(
                     label="Objectifs commerciaux",
-                    lines=2,
+                    lines=1,
                     info="Objectifs clairs et mesurables que l'on souhaite atteindre, souvent décrits selon la méthode [SMART](https://fr.wikipedia.org/wiki/Objectifs_et_indicateurs_SMART) pour assurer leur réalisabilité."
                 )
-                refine_commercial_objectives_button = gr.Button("Affiner", scale=0.2)
+                refine_commercial_objectives_button = gr.Button("Affiner", scale=0.05)
 
         # Section 4: Graphismes et accessibilité
         with gr.Accordion("4. Graphismes et accessibilité", open=False):
             with gr.Row():
-                visual_codes_input = gr.Textbox(label="Graphiques et codes visuels", lines=2)
-                refine_visual_codes_button = gr.Button("Affiner", scale=0.2)
+                visual_codes_input = gr.Textbox(label="Graphiques et codes visuels", lines=1)
+                refine_visual_codes_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
-                special_considerations_input = gr.Textbox(label="Considérations spéciales (accessibilité)", lines=2)
-                refine_special_considerations_button = gr.Button("Affiner", scale=0.2)
+                special_considerations_input = gr.Textbox(label="Considérations spéciales (accessibilité)", lines=1)
+                refine_special_considerations_button = gr.Button("Affiner", scale=0.05)
 
         # Section 5: Dimensions supplémentaires
         with gr.Accordion("5. Dimensions supplémentaires", open=False):
             with gr.Row():
-                daily_life_input = gr.Textbox(label="Une journée dans la vie", lines=3)
-                refine_daily_life_button = gr.Button("Affiner", scale=0.2)
+                daily_life_input = gr.Textbox(label="Une journée dans la vie", lines=1)
+                refine_daily_life_button = gr.Button("Affiner", scale=0.05)
             with gr.Row():
-                references_input = gr.Textbox(label="Références (sources de données)", lines=2)
-                refine_references_button = gr.Button("Affiner", scale=0.2)
+                references_input = gr.Textbox(label="Références (sources de données)", lines=1)
+                refine_references_button = gr.Button("Affiner", scale=0.05)
 
         # Zone de sortie pour les suggestions affinées
         refined_suggestions_output = gr.Markdown(label="Suggestions affinées")
 
-        # Associer les boutons à la fonction de traitement
-        refine_marital_status_button.click(
-            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "État civil", value, biases, marketing_objectives),
-            inputs=[first_name_input, last_name_input, age_input, marital_status_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
-        )
-        refine_education_level_button.click(
-            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Niveau d'éducation", value, biases, marketing_objectives),
-            inputs=[first_name_input, last_name_input, age_input, education_level_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
-        )
-        refine_profession_button.click(
-            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Profession", value, biases, marketing_objectives),
-            inputs=[first_name_input, last_name_input, age_input, profession_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
-        )
-        refine_income_button.click(
-            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Revenus annuels", value, biases, marketing_objectives),
-            inputs=[first_name_input, last_name_input, age_input, income_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
-        )
         refine_personality_traits_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Traits de personnalité", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, personality_traits_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_values_beliefs_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Valeurs et croyances", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, values_beliefs_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_motivations_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Motivations intrinsèques", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, motivations_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_hobbies_interests_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Hobbies et intérêts", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, hobbies_interests_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_main_responsibilities_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Responsabilités principales", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, main_responsibilities_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_daily_activities_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Activités journalières", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, daily_activities_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_technology_relationship_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Relation avec la technologie", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, technology_relationship_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_product_related_activities_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Tâches liées au produit", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, product_related_activities_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_pain_points_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Points de douleur", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, pain_points_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_product_goals_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Objectifs d’utilisation du produit", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, product_goals_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_usage_scenarios_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Scénarios d’utilisation", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, usage_scenarios_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_brand_relationship_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Relation avec la marque", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, brand_relationship_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_market_segment_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Segment de marché", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, market_segment_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_commercial_objectives_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Objectifs commerciaux", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, commercial_objectives_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_visual_codes_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Graphiques et codes visuels", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, visual_codes_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_special_considerations_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Considérations spéciales", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, special_considerations_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_daily_life_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Une journée dans la vie", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, daily_life_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
         refine_references_button.click(
             fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Références", value, biases, marketing_objectives),
             inputs=[first_name_input, last_name_input, age_input, references_input, bias_analysis_output, objective_input],
-            outputs=refined_suggestions_output
+            outputs=[]
         )
 
     # Ajout du nouvel onglet "Résumé et export du persona"
@@ -848,4 +839,4 @@ def process_persona(
     """
     return persona_profile
 
-demo.launch(debug=True)
+demo.queue().launch(debug=True)
