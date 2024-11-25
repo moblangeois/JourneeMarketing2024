@@ -194,6 +194,7 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
 
 # Remplacer la fonction generate_pdf pour inclure tous les champs de l'étape 3
 def generate_pdf(first_name, last_name, age, image_url, marital_status, education_level, profession, income, personality_traits, values_beliefs, motivations, hobbies_interests, main_responsibilities, daily_activities, technology_relationship, product_related_activities, pain_points, product_goals, usage_scenarios, brand_relationship, market_segment, commercial_objectives, visual_codes, special_considerations, daily_life, references):
+    # TODO : Débuguer la fonction pour gérer les listes et les tableaux NumPy
     try:
         temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
         c = canvas.Canvas(temp_pdf.name, pagesize=A4)
@@ -202,36 +203,24 @@ def generate_pdf(first_name, last_name, age, image_url, marital_status, educatio
         # Ajouter l'image du persona
         if image_url and isinstance(image_url, str) and len(image_url) > 0:
             try:
-                response = requests.get(image_url)
-                response.raise_for_status()  # Vérifier si la requête a réussi
-                image = Image.open(BytesIO(response.content))
+                image = Image.open(BytesIO(requests.get(image_url).content))
                 image_width, image_height = image.size
-
-                # Redimensionner l'image si nécessaire
-                max_width = 150
-                max_height = 150
-                if image_width > max_width or image_height > max_height:
-                    ratio = min(max_width / image_width, max_height / image_height)
-                    image_width = int(image_width * ratio)
-                    image_height = int(image_height * ratio)
-                    image = image.resize((image_width, image_height))
-
-                temp_image = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-                image.save(temp_image.name, format="PNG")
-                c.drawImage(temp_image.name, 50, height - 200, width=image_width, height=image_height)
-                temp_image.close()
-                os.unlink(temp_image.name)
+                aspect = image_height / float(image_width)
+                img_width = 200
+                img_height = img_width * aspect
+                c.drawImage(image, 50, height - 250, width=img_width, height=img_height)
+                print("Image ajoutée au PDF.")  # Ajouté pour débogage
             except Exception as e:
-                print(f"Erreur lors du téléchargement ou du traitement de l'image : {e}")
-                c.setFont("Helvetica", 12)
-                c.drawString(50, height - 200, "Image non disponible")
+                print(f"Erreur lors de l'ajout de l'image : {e}")  # Ajouté pour débogage
         else:
             c.setFont("Helvetica", 12)
             c.drawString(50, height - 200, "Image non disponible")
+            print("Image non disponible.")  # Ajouté pour débogage
 
         # Ajouter les informations du persona
         c.setFont("Helvetica-Bold", 16)
         c.drawString(220, height - 100, f'{first_name} {last_name}, Âge: {age}')
+        print("Informations de base ajoutées au PDF.")  # Ajouté pour débogage
 
         c.setFont("Helvetica", 12)
         y = height - 130
@@ -263,17 +252,31 @@ def generate_pdf(first_name, last_name, age, image_url, marital_status, educatio
         ]
 
         for field_name, field_value in fields:
-            if field_value is None or (isinstance(field_value, (list, np.ndarray)) and len(field_value) == 0):
-                text = f"{field_name}: Non spécifié"
+            print(f"Traitement du champ: {field_name}, valeur: {field_value}")  # Ajouté pour débogage
+            if field_value is None or (isinstance(field_value, list) and len(field_value) == 0) or (isinstance(field_value, np.ndarray) and not field_value.any()):
+                print(f"Champ {field_name} est vide ou None, passage.")  # Ajouté pour débogage
+                continue
+            # Assurer que 'text' est une chaîne de caractères
+            if isinstance(field_value, list):
+                text = ", ".join(map(str, field_value))
+            elif isinstance(field_value, np.ndarray):
+                text = ", ".join(map(str, field_value.tolist()))
             else:
-                text = f"{field_name}: {field_value}"
-            c.drawString(50, y, text)
-            y -= 40
-            if y < 50:
-                c.showPage()
-                y = height - 50
+                text = str(field_value)
+            
+            print(f"Texte converti pour {field_name}: {text}")  # Ajouté pour débogage
+
+            try:
+                c.drawString(50, y, f"{field_name}: {text}")
+                y -= 40
+                if y < 50:
+                    print("Limite de la page atteinte.")  # Ajouté pour débogage
+                    break  # Ajoutez une gestion de page si nécessaire
+            except Exception as draw_error:
+                print(f"Erreur lors de l'écriture du champ {field_name}: {draw_error}")  # Ajouté pour débogage
 
         c.save()
+        print(f"PDF généré avec succès: {temp_pdf.name}")  # Ajouté pour débogage
         return temp_pdf.name
 
     except Exception as e:
@@ -388,6 +391,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
     with gr.Tab("Informations sur l'API OpenAI"):
         gr.Markdown("### Informations sur l'API OpenAI")
         gr.Markdown("Veuillez entrer votre clé API OpenAI pour commencer.")
+        # TODO : Ajouer une infobulle pour ajouter sa clé PIA
 
         # Section de connexion API
         api_key_input = gr.Textbox(label="Entrez votre clé API OpenAI", type="password")
@@ -808,7 +812,6 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 brand_relationship_input, market_segment_input, commercial_objectives_input, visual_codes_input,
                 special_considerations_input, daily_life_input, references_input
             ],
-            outputs=pdf_file_output  # Assurez-vous que ceci correspond au composant gr.File
-        )
+            outputs=pdf_file_output)
 
 demo.queue().launch(debug=True)
