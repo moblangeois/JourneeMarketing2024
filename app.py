@@ -294,6 +294,7 @@ def refine_persona_details(first_name, last_name, age, field_name, field_value):
 
 # Ajouter les dictionnaires de correspondance
 posture_mapping = {
+    "": "",
     "Debout": "standing up",
     "Assis": "sitting",
     "Allongé": "lying down",
@@ -303,7 +304,7 @@ posture_mapping = {
 }
 
 facial_expression_mapping = {
-
+    "": "",
     "Souriant": "smiling",
     "Sérieux": "serious",
     "Triste": "sad",
@@ -313,48 +314,56 @@ facial_expression_mapping = {
 }
 
 skin_color_mapping = {
+    "": "",
     "Clair": "light",
     "Moyen": "medium",
     "Foncé": "dark"
 }
 
 eye_color_mapping = {
+    "": "",
     "Bleu": "blue",
     "Vert": "green",
     "Marron": "brown"
 }
 
 hair_style_mapping = {
+    "": "",
     "Court": "short",
     "Long": "long",
     "Bouclé": "curly"
 }
 
 hair_color_mapping = {
+    "": "",
     "Blond": "blonde",
     "Brun": "brown",
     "Noir": "black"
 }
 
 clothing_style_mapping = {
+    "": "",
     "Décontracté": "casual",
     "Professionnel": "professional",
     "Sportif": "sporty"
 }
 
 accessories_mapping = {
+    "": "",
     "Lunettes": "glasses",
     "Montre": "watch",
     "Chapeau": "hat"
 }
 
 background_mapping = {
+    "": "",
     "Bureau": "office",
     "Extérieur": "outdoor",
     "Maison": "home"
 }
 
 lighting_mapping = {
+    "": "",
     "Naturel": "natural",
     "Artificiel": "artificial",
     "Faible": "dim"
@@ -512,6 +521,24 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 background_input, lighting_input
             ],
             outputs=persona_image_output
+        )
+
+        # Ajouter un bouton de réinitialisation en bas du formulaire
+        reset_button = gr.Button("Réinitialiser")
+
+        # Fonction pour réinitialiser les champs du formulaire
+        def reset_form():
+            return [""] * 11  # Remplacez 11 par le nombre de champs à réinitialiser
+
+        # Associer le bouton de réinitialisation à la fonction reset_form
+        reset_button.click(
+            fn=reset_form,
+            inputs=[],
+            outputs=[
+                skin_color_input, eye_color_input, hair_style_input, hair_color_input, facial_features_input,
+                facial_expression_input, posture_input, clothing_style_input, accessories_input,
+                background_input, lighting_input
+            ]
         )
 
     with gr.Tab("Étape 3: Profil détaillé du persona"):
