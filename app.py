@@ -139,8 +139,7 @@ def analyze_biases(objective_text):
 # Optimiser la génération d'image pour utiliser directement l'URL
 def generate_persona_image(first_name, last_name, age, gender, persona_description,
                            skin_color, eye_color, hair_style, hair_color, facial_features,
-                           facial_expression, posture,
-                           clothing_style, accessories):
+                           posture, clothing_style, accessories):
     if not first_name or not last_name or not age or not gender:
         return "Veuillez remplir tous les champs pour générer l'image du persona."
     
@@ -502,7 +501,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
 
         # Fonction pour réinitialiser les champs du formulaire
         def reset_form():
-            return [""] * 11  # Remplacez 11 par le nombre de champs à réinitialiser
+            return [""] * 8  # Le nombre de champs à réinitialiser
 
         # Associer le bouton de réinitialisation à la fonction reset_form
         reset_button.click(
