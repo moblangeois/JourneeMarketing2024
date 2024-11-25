@@ -140,7 +140,7 @@ def analyze_biases(objective_text):
 def generate_persona_image(first_name, last_name, age, gender, persona_description,
                            skin_color, eye_color, hair_style, hair_color, facial_features,
                            facial_expression, posture,
-                           clothing_style, accessories,):
+                           clothing_style, accessories):
     if not first_name or not last_name or not age or not gender:
         return "Veuillez remplir tous les champs pour générer l'image du persona."
     
@@ -260,7 +260,7 @@ def review_persona(first_name, last_name, age, image_url):
     return html_content
 
 # Fonction pour affiner les contributions de l'utilisateur et de l'IA
-def refine_persona_details(first_name, last_name, age, field_name, field_value):
+def refine_persona_details(first_name, last_name, age, field_name, field_value, biases, marketing_objectives):
     prompt = f"""
     Vous êtes un assistant IA aidant à affiner les détails d'un seul aspect persona marketing.
     Ne traitez que le champ suivant : {field_name}
@@ -271,8 +271,12 @@ def refine_persona_details(first_name, last_name, age, field_name, field_value):
     Nom : {first_name} {last_name}
     Âge : {age}
     {field_name} : {field_value}
-    # TODO : Inclure les biais identifiés pour affiner les suggestions
-    # TODO : Inclure les objectifs marketing pour guider les suggestions
+
+    Biais identifiés :
+    {biases}
+
+    Objectifs marketing :
+    {marketing_objectives}
     """
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -488,7 +492,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 first_name_input, last_name_input, age_input, gender_input, persona_description_input,
                 skin_color_input, eye_color_input, hair_style_input, hair_color_input,
                 facial_expression_input, posture_input,
-                clothing_style_input, accessories_input,
+                clothing_style_input, accessories_input
             ],
             outputs=persona_image_output
         )
@@ -615,113 +619,113 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
 
         # Associer les boutons à la fonction de traitement
         refine_marital_status_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "État civil", value),
-            inputs=[first_name_input, last_name_input, age_input, marital_status_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "État civil", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, marital_status_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_education_level_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Niveau d'éducation", value),
-            inputs=[first_name_input, last_name_input, age_input, education_level_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Niveau d'éducation", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, education_level_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_profession_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Profession", value),
-            inputs=[first_name_input, last_name_input, age_input, profession_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Profession", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, profession_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_income_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Revenus annuels", value),
-            inputs=[first_name_input, last_name_input, age_input, income_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Revenus annuels", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, income_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_personality_traits_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Traits de personnalité", value),
-            inputs=[first_name_input, last_name_input, age_input, personality_traits_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Traits de personnalité", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, personality_traits_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_values_beliefs_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Valeurs et croyances", value),
-            inputs=[first_name_input, last_name_input, age_input, values_beliefs_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Valeurs et croyances", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, values_beliefs_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_motivations_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Motivations intrinsèques", value),
-            inputs=[first_name_input, last_name_input, age_input, motivations_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Motivations intrinsèques", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, motivations_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_hobbies_interests_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Hobbies et intérêts", value),
-            inputs=[first_name_input, last_name_input, age_input, hobbies_interests_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Hobbies et intérêts", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, hobbies_interests_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_main_responsibilities_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Responsabilités principales", value),
-            inputs=[first_name_input, last_name_input, age_input, main_responsibilities_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Responsabilités principales", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, main_responsibilities_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_daily_activities_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Activités journalières", value),
-            inputs=[first_name_input, last_name_input, age_input, daily_activities_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Activités journalières", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, daily_activities_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_technology_relationship_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Relation avec la technologie", value),
-            inputs=[first_name_input, last_name_input, age_input, technology_relationship_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Relation avec la technologie", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, technology_relationship_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_product_related_activities_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Tâches liées au produit", value),
-            inputs=[first_name_input, last_name_input, age_input, product_related_activities_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Tâches liées au produit", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, product_related_activities_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_pain_points_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Points de douleur", value),
-            inputs=[first_name_input, last_name_input, age_input, pain_points_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Points de douleur", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, pain_points_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_product_goals_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Objectifs d’utilisation du produit", value),
-            inputs=[first_name_input, last_name_input, age_input, product_goals_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Objectifs d’utilisation du produit", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, product_goals_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_usage_scenarios_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Scénarios d’utilisation", value),
-            inputs=[first_name_input, last_name_input, age_input, usage_scenarios_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Scénarios d’utilisation", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, usage_scenarios_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_brand_relationship_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Relation avec la marque", value),
-            inputs=[first_name_input, last_name_input, age_input, brand_relationship_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Relation avec la marque", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, brand_relationship_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_market_segment_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Segment de marché", value),
-            inputs=[first_name_input, last_name_input, age_input, market_segment_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Segment de marché", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, market_segment_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_commercial_objectives_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Objectifs commerciaux", value),
-            inputs=[first_name_input, last_name_input, age_input, commercial_objectives_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Objectifs commerciaux", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, commercial_objectives_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_visual_codes_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Graphiques et codes visuels", value),
-            inputs=[first_name_input, last_name_input, age_input, visual_codes_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Graphiques et codes visuels", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, visual_codes_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_special_considerations_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Considérations spéciales", value),
-            inputs=[first_name_input, last_name_input, age_input, special_considerations_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Considérations spéciales", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, special_considerations_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_daily_life_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Une journée dans la vie", value),
-            inputs=[first_name_input, last_name_input, age_input, daily_life_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Une journée dans la vie", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, daily_life_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
         refine_references_button.click(
-            fn=lambda first_name, last_name, age, value: refine_persona_details(first_name, last_name, age, "Références", value),
-            inputs=[first_name_input, last_name_input, age_input, references_input],
+            fn=lambda first_name, last_name, age, value, biases, marketing_objectives: refine_persona_details(first_name, last_name, age, "Références", value, biases, marketing_objectives),
+            inputs=[first_name_input, last_name_input, age_input, references_input, bias_analysis_output, objective_input],
             outputs=refined_suggestions_output
         )
 
