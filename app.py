@@ -137,11 +137,47 @@ def analyze_biases(objective_text):
         return {"error": str(e)}
 
 # Optimiser la génération d'image pour utiliser directement l'URL
-def generate_persona_image(first_name, last_name, age, gender, persona_description):
+def generate_persona_image(first_name, last_name, age, gender, persona_description,
+                           skin_color, eye_color, hair_style, hair_color, facial_features,
+                           facial_expression, posture,
+                           clothing_style, accessories,
+                           background, lighting):
     if not first_name or not last_name or not age or not gender:
         return "Veuillez remplir tous les champs pour générer l'image du persona."
-
-    prompt = f"{first_name}, {last_name}, photorealistic {gender}, {age} years old. {persona_description}. Normal person, basic, normie."
+    
+    prompt = f"{first_name} {last_name}, {gender}, {age} years old."
+    
+    # Ajouter les nouvelles informations au prompt
+    if skin_color:
+        prompt += f" Skin tone: {skin_color}."
+    if eye_color:
+        prompt += f" Eye color: {eye_color}."
+    if hair_style:
+        prompt += f" Hairstyle: {hair_style}."
+    if hair_color:
+        prompt += f" Hair color: {hair_color}."
+    if facial_features:
+        prompt += f" Facial features: {facial_features}."
+    if facial_expression:
+        facial_expression_eng = facial_expression_mapping.get(facial_expression, facial_expression)
+        prompt += f" Facial expression: {facial_expression_eng}."
+    if posture:
+        posture_eng = posture_mapping.get(posture, posture)
+        prompt += f" Posture: {posture_eng}."
+    if clothing_style:
+        prompt += f" Clothing style: {clothing_style}."
+    if accessories:
+        prompt += f" Accessories: {accessories}."
+    if background:
+        prompt += f" Background: {background}."
+    if lighting:
+        prompt += f" Lighting: {lighting}."
+    if artistic_style:
+        prompt += f" Artistic style: {artistic_style}."
+    if angle:
+        prompt += f" Angle and framing: {angle}."
+    
+    prompt += f" {persona_description}."
     
     response = client.images.generate(
         model="dall-e-3",
@@ -255,6 +291,74 @@ def refine_persona_details(first_name, last_name, age, field_name, field_value):
     )
     suggestions = response.choices[0].message.content.strip()
     return suggestions
+
+# Ajouter les dictionnaires de correspondance
+posture_mapping = {
+    "Debout": "standing up",
+    "Assis": "sitting",
+    "Allongé": "lying down",
+    "Accroupi": "crouching",
+    "En mouvement": "moving",
+    "Reposé": "resting"
+}
+
+facial_expression_mapping = {
+
+    "Souriant": "smiling",
+    "Sérieux": "serious",
+    "Triste": "sad",
+    "En colère": "angry",
+    "Surpris": "surprised",
+    "Pensif": "thoughtful"
+}
+
+skin_color_mapping = {
+    "Clair": "light",
+    "Moyen": "medium",
+    "Foncé": "dark"
+}
+
+eye_color_mapping = {
+    "Bleu": "blue",
+    "Vert": "green",
+    "Marron": "brown"
+}
+
+hair_style_mapping = {
+    "Court": "short",
+    "Long": "long",
+    "Bouclé": "curly"
+}
+
+hair_color_mapping = {
+    "Blond": "blonde",
+    "Brun": "brown",
+    "Noir": "black"
+}
+
+clothing_style_mapping = {
+    "Décontracté": "casual",
+    "Professionnel": "professional",
+    "Sportif": "sporty"
+}
+
+accessories_mapping = {
+    "Lunettes": "glasses",
+    "Montre": "watch",
+    "Chapeau": "hat"
+}
+
+background_mapping = {
+    "Bureau": "office",
+    "Extérieur": "outdoor",
+    "Maison": "home"
+}
+
+lighting_mapping = {
+    "Naturel": "natural",
+    "Artificiel": "artificial",
+    "Faible": "dim"
+}
 
 with gr.Blocks(theme=gr.themes.Citrus()) as demo:
     gr.Markdown("# Assistant de création de persona")
@@ -373,9 +477,40 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             with gr.Column(scale=1):
                 persona_image_output = gr.Image(label="Image du persona")
         
+        # Ajouter une liste accordéon pour les détails du prompt DALL-E 3
+        with gr.Accordion("Détails du prompt DALL-E 3"):
+            # Section 1: Caractéristiques physiques
+            with gr.Accordion("1. Caractéristiques physiques", open=False):
+                skin_color_input = gr.Dropdown(label="Teint de la peau", choices=list(skin_color_mapping.keys()), value="")
+                eye_color_input = gr.Dropdown(label="Couleur des yeux", choices=list(eye_color_mapping.keys()), value="")
+                hair_style_input = gr.Dropdown(label="Coiffure", choices=list(hair_style_mapping.keys()), value="")
+                hair_color_input = gr.Dropdown(label="Couleur des cheveux", choices=list(hair_color_mapping.keys()), value="")
+                facial_features_input = gr.Textbox(label="Traits du visage", value="")
+            
+            # Section 2: Expressions faciales et posture
+            with gr.Accordion("2. Expressions faciales et posture", open=False):
+                facial_expression_input = gr.Dropdown(label="Expression faciale", choices=list(facial_expression_mapping.keys()), value="")
+                posture_input = gr.Dropdown(label="Posture", choices=list(posture_mapping.keys()), value="")
+            
+            # Section 3: Style vestimentaire
+            with gr.Accordion("3. Style vestimentaire", open=False):
+                clothing_style_input = gr.Dropdown(label="Style de vêtements", choices=list(clothing_style_mapping.keys()), value="")
+                accessories_input = gr.Dropdown(label="Accessoires", choices=list(accessories_mapping.keys()), value="")
+            
+            # Section 4: Contexte et éclairage
+            with gr.Accordion("4. Contexte et éclairage", open=False):
+                background_input = gr.Dropdown(label="Arrière-plan", choices=list(background_mapping.keys()), value="")
+                lighting_input = gr.Dropdown(label="Éclairage", choices=list(lighting_mapping.keys()), value="")
+        
         generate_image_button.click(
             fn=generate_persona_image,
-            inputs=[first_name_input, last_name_input, age_input, gender_input, persona_description_input],
+            inputs=[
+                first_name_input, last_name_input, age_input, gender_input, persona_description_input,
+                skin_color_input, eye_color_input, hair_style_input, hair_color_input, facial_features_input,
+                facial_expression_input, posture_input,
+                clothing_style_input, accessories_input,
+                background_input, lighting_input
+            ],
             outputs=persona_image_output
         )
 
