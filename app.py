@@ -140,12 +140,11 @@ def analyze_biases(objective_text):
 def generate_persona_image(first_name, last_name, age, gender, persona_description,
                            skin_color, eye_color, hair_style, hair_color, facial_features,
                            facial_expression, posture,
-                           clothing_style, accessories,
-                           background, lighting):
+                           clothing_style, accessories,):
     if not first_name or not last_name or not age or not gender:
         return "Veuillez remplir tous les champs pour générer l'image du persona."
     
-    prompt = f"{first_name} {last_name}, {gender}, {age} years old."
+    prompt = f"{first_name} {last_name}, {gender}, {age} years old. Realist photo."
     
     # Ajouter les nouvelles informations au prompt
     if skin_color:
@@ -168,14 +167,6 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
         prompt += f" Clothing style: {clothing_style}."
     if accessories:
         prompt += f" Accessories: {accessories}."
-    if background:
-        prompt += f" Background: {background}."
-    if lighting:
-        prompt += f" Lighting: {lighting}."
-    if artistic_style:
-        prompt += f" Artistic style: {artistic_style}."
-    if angle:
-        prompt += f" Angle and framing: {angle}."
     
     prompt += f" {persona_description}."
     
@@ -355,20 +346,6 @@ accessories_mapping = {
     "Chapeau": "hat"
 }
 
-background_mapping = {
-    "": "",
-    "Bureau": "office",
-    "Extérieur": "outdoor",
-    "Maison": "home"
-}
-
-lighting_mapping = {
-    "": "",
-    "Naturel": "natural",
-    "Artificiel": "artificial",
-    "Faible": "dim"
-}
-
 with gr.Blocks(theme=gr.themes.Citrus()) as demo:
     gr.Markdown("# Assistant de création de persona")
 
@@ -494,7 +471,6 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 eye_color_input = gr.Dropdown(label="Couleur des yeux", choices=list(eye_color_mapping.keys()), value="")
                 hair_style_input = gr.Dropdown(label="Coiffure", choices=list(hair_style_mapping.keys()), value="")
                 hair_color_input = gr.Dropdown(label="Couleur des cheveux", choices=list(hair_color_mapping.keys()), value="")
-                facial_features_input = gr.Textbox(label="Traits du visage", value="")
             
             # Section 2: Expressions faciales et posture
             with gr.Accordion("2. Expressions faciales et posture", open=False):
@@ -506,19 +482,13 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 clothing_style_input = gr.Dropdown(label="Style de vêtements", choices=list(clothing_style_mapping.keys()), value="")
                 accessories_input = gr.Dropdown(label="Accessoires", choices=list(accessories_mapping.keys()), value="")
             
-            # Section 4: Contexte et éclairage
-            with gr.Accordion("4. Contexte et éclairage", open=False):
-                background_input = gr.Dropdown(label="Arrière-plan", choices=list(background_mapping.keys()), value="")
-                lighting_input = gr.Dropdown(label="Éclairage", choices=list(lighting_mapping.keys()), value="")
-        
         generate_image_button.click(
             fn=generate_persona_image,
             inputs=[
                 first_name_input, last_name_input, age_input, gender_input, persona_description_input,
-                skin_color_input, eye_color_input, hair_style_input, hair_color_input, facial_features_input,
+                skin_color_input, eye_color_input, hair_style_input, hair_color_input,
                 facial_expression_input, posture_input,
                 clothing_style_input, accessories_input,
-                background_input, lighting_input
             ],
             outputs=persona_image_output
         )
@@ -535,9 +505,8 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             fn=reset_form,
             inputs=[],
             outputs=[
-                skin_color_input, eye_color_input, hair_style_input, hair_color_input, facial_features_input,
-                facial_expression_input, posture_input, clothing_style_input, accessories_input,
-                background_input, lighting_input
+                skin_color_input, eye_color_input, hair_style_input, hair_color_input,
+                facial_expression_input, posture_input, clothing_style_input, accessories_input
             ]
         )
 
