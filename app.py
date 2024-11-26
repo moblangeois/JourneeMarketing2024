@@ -487,7 +487,6 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
         )
 
     with gr.Tab("Étape 3: Profil détaillé du persona"):
-        gr.Markdown("### Étape 3: Profil détaillé du persona")
 
         # Section 1: Informations de base
         with gr.Accordion("1. Informations de base", open=True):
@@ -676,7 +675,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             outputs=[]
         )
     with gr.Tab("Étape 4: Résumé du persona"):
-        gr.Markdown("### Résumé du persona")
+        gr.Markdown("")
         summary_button = gr.Button("Afficher le résumé")
         summary_content = gr.Markdown()
         
@@ -689,7 +688,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             main_responsibilities, daily_activities, technology_relationship,
             product_related_activities, pain_points, product_goals, persona_image_output
         ):
-            summary = "### Résumé du Persona\n\n"
+            summary = "<h2>Résumé du Persona</h2>\n\n"
             image = None
             if persona_image_output and os.path.exists(persona_image_output):
                 try:
@@ -706,8 +705,10 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             if first_name or last_name or age or gender or persona_description:
                 full_name = f"{first_name} {last_name}".strip()
                 if full_name:
+                    # aligné à droite (full_name et age)
                     personal_info += f"**{full_name}**, {age} ans\n"
-
+                if persona_description:
+                    personal_info += f"**Description**: {persona_description}\n\n"
             
             # Section Informations Sociales
             social_info = ""
@@ -759,20 +760,20 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             # Colonne pour le texte
             summary += "<div style='flex: 1; margin-right: 20px;'>\n"
             if personal_info:
-                summary += "<div style='font-size: 1.2em; font-weight: bold;'>Informations Personnelles</div>\n\n" + personal_info
+                summary += "<div >Informations Personnelles\n</div>\n\n" + personal_info
             if social_info:
-                summary += "<div style='font-size: 1.2em; font-weight: bold;'>Informations Sociales</div>\n\n" + social_info
+                summary += "<div style='font-size: 1.2em; font-weight: bold; margin-top: 20px;'>Informations sociales</div>\n\n" + social_info
             if personality_info:
-                summary += "<div style='font-size: 1.2em; font-weight: bold;'>Traits de Personnalité</div>\n\n" + personality_info
+                summary += "<div style='font-size: 1.2em; font-weight: bold; margin-top: 20px;'>Traits de personnalité</div>\n\n" + personality_info
             if responsibilities_info:
-                summary += "<div style='font-size: 1.2em; font-weight: bold;'>Responsabilités et Activités</div>\n\n" + responsibilities_info
+                summary += "<div style='font-size: 1.2em; font-weight: bold; margin-top: 20px;'>Responsabilités et activités</div>\n\n" + responsibilities_info
             if pain_goals_info:
-                summary += "<div style='font-size: 1.2em; font-weight: bold;'>Points de Douleur et Objectifs</div>\n\n" + pain_goals_info
+                summary += "<div style='font-size: 1.2em; font-weight: bold; margin-top: 20px;'>Points de douleur et objectifs</div>\n\n" + pain_goals_info
             summary += "</div>\n"
             
             # Colonne pour l'image
             if image:
-                summary += f"<div style='flex: 1; text-align: center;'>\n<img src='{image}' style='max-width: 100%; max-height: 300px;'>\n</div>\n"
+                summary += f"<div style='flex: 1; text-align: left;'>\n<img src='{image}' style='max-width: 100%; max-height: 300px;'>\n</div>\n"
             else:
                 summary += f"<div style='flex: 1; text-align: center;'>\n<p>Aucune image de persona générée.</p>\n</div>\n"
             
