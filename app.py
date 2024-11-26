@@ -1,25 +1,16 @@
 import gradio as gr
+from gradio_client import Client
+
 from openai import OpenAI
 from pydantic import BaseModel
+
 import os
-from dotenv import load_dotenv
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
 import requests
 from PIL import Image
 import tempfile
 import numpy as np
-from io import BytesIO  # Ajouté pour gérer BytesIO
-from gradio_client import Client
-from uuid import uuid4  # Pour identifier les suggestions
-import pandas as pd  # Pour utiliser un DataFrame
+
 import markdown
-
-# Charger les variables d'environnement depuis le fichier .env
-load_dotenv()
-
-api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=api_key) if api_key else None
 
 # Modèle pour la réponse de l'analyse des biais
 class BiasAnalysisResponse(BaseModel):
@@ -144,7 +135,7 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
     if not first_name or not last_name or not age or not gender:
         return "Veuillez remplir tous les champs pour générer l'image du persona."
     
-    prompt = f"{first_name} {last_name}, {gender}, {age} years old. Realist photo."
+    prompt = f"one person. {first_name} {last_name}, {gender}, {age} years old. Realist photo."
     
     # Ajouter les nouvelles informations au prompt
     if skin_color:
@@ -186,109 +177,84 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
     with open(temp_image.name, 'wb') as f:
         f.write(response_image.content)
 
-    # Déclarer une variable globale pour l'image temporaire
     global temp_image_path
     temp_image_path = temp_image.name
 
-    return image_url  # Retourner l'URL de l'image
+    return image_url
 
-# Remplacer la fonction generate_pdf pour inclure tous les champs de l'étape 3
-def generate_pdf(first_name, last_name, age, image_url, marital_status, education_level, profession, income, personality_traits, values_beliefs, motivations, hobbies_interests, main_responsibilities, daily_activities, technology_relationship, product_related_activities, pain_points, product_goals, usage_scenarios, brand_relationship, market_segment, commercial_objectives, visual_codes, special_considerations, daily_life, references):
-    # TODO : Débuguer la fonction pour gérer les listes et les tableaux NumPy
-    try:
-        temp_pdf = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
-        c = canvas.Canvas(temp_pdf.name, pagesize=A4)
-        width, height = A4
+# Ajouter les dictionnaires de correspondance
+posture_mapping = {
+    "": "",
+    "Debout": "standing up",
+    "Assis": "sitting",
+    "Allongé": "lying down",
+    "Accroupi": "crouching",
+    "En mouvement": "moving",
+    "Reposé": "resting"
+}
 
-        # Ajouter l'image du persona
-        if image_url and isinstance(image_url, str) and len(image_url) > 0:
-            try:
-                image = Image.open(BytesIO(requests.get(image_url).content))
-                image_width, image_height = image.size
-                aspect = image_height / float(image_width)
-                img_width = 200
-                img_height = img_width * aspect
-                c.drawImage(image, 50, height - 250, width=img_width, height=img_height)
-                print("Image ajoutée au PDF.")  # Ajouté pour débogage
-            except Exception as e:
-                print(f"Erreur lors de l'ajout de l'image : {e}")  # Ajouté pour débogage
-        else:
-            c.setFont("Helvetica", 12)
-            c.drawString(50, height - 200, "Image non disponible")
-            print("Image non disponible.")  # Ajouté pour débogage
+facial_expression_mapping = {
+    "": "",
+    "Souriant": "smiling",
+    "Sérieux": "serious",
+    "Triste": "sad",
+    "En colère": "angry",
+    "Surpris": "surprised",
+    "Pensif": "thoughtful"
+}
 
-        # Ajouter les informations du persona
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(220, height - 100, f'{first_name} {last_name}, Âge: {age}')
-        print("Informations de base ajoutées au PDF.")  # Ajouté pour débogage
+skin_color_mapping = {
+    "": "",
+    "Clair": "light",
+    "Moyen": "medium",
+    "Foncé": "dark",
+    "Très foncé": "very dark"
+}
 
-        c.setFont("Helvetica", 12)
-        y = height - 130
+eye_color_mapping = {
+    "": "",
+    "Bleu": "blue",
+    "Vert": "green",
+    "Marron": "brown",
+    "Gris": "gray"
+}
 
-        # Ajouter les autres informations
-        fields = [
-            ("État civil", marital_status),
-            ("Niveau d'éducation", education_level),
-            ("Profession", profession),
-            ("Revenus annuels", f"{income} €" if income else "Non spécifié"),
-            ("Traits de personnalité", personality_traits),
-            ("Valeurs et croyances", values_beliefs),
-            ("Motivations intrinsèques", motivations),
-            ("Hobbies et intérêts", hobbies_interests),
-            ("Responsabilités principales", main_responsibilities),
-            ("Activités journalières", daily_activities),
-            ("Relation avec la technologie", technology_relationship),
-            ("Tâches liées au produit", product_related_activities),
-            ("Points de douleur", pain_points),
-            ("Objectifs d’utilisation du produit", product_goals),
-            ("Scénarios d’utilisation", usage_scenarios),
-            ("Relation avec la marque", brand_relationship),
-            ("Segment de marché", market_segment),
-            ("Objectifs commerciaux", commercial_objectives),
-            ("Graphiques et codes visuels", visual_codes),
-            ("Considérations spéciales", special_considerations),
-            ("Une journée dans la vie", daily_life),
-            ("Références", references)
-        ]
+hair_style_mapping = {
+    "": "",
+    "Court": "short",
+    "Long": "long",
+    "Bouclé": "curly",
+    "Rasé": "shaved",
+    "Chauve": "bald",
+    "Tresses": "braided",
+    "Queue de cheval": "ponytail",
+    "Coiffure afro": "afro",
+    "Dégradé": "fade"
+}
 
-        for field_name, field_value in fields:
-            print(f"Traitement du champ: {field_name}, valeur: {field_value}")  # Ajouté pour débogage
-            if field_value is None or (isinstance(field_value, list) and len(field_value) == 0) or (isinstance(field_value, np.ndarray) and not field_value.any()):
-                print(f"Champ {field_name} est vide ou None, passage.")  # Ajouté pour débogage
-                continue
-            # Assurer que 'text' est une chaîne de caractères
-            if isinstance(field_value, list):
-                text = ", ".join(map(str, field_value))
-            elif isinstance(field_value, np.ndarray):
-                text = ", ".join(map(str, field_value.tolist()))
-            else:
-                text = str(field_value)
-            
-            print(f"Texte converti pour {field_name}: {text}")  # Ajouté pour débogage
+hair_color_mapping = {
+    "": "",
+    "Blond": "blonde",
+    "Brun": "brown",
+    "Noir": "black",
+    "Roux": "red",
+    "Gris": "gray",
+    "Blanc": "white"
+}
 
-            try:
-                c.drawString(50, y, f"{field_name}: {text}")
-                y -= 40
-                if y < 50:
-                    print("Limite de la page atteinte.")  # Ajouté pour débogage
-                    break  # Ajoutez une gestion de page si nécessaire
-            except Exception as draw_error:
-                print(f"Erreur lors de l'écriture du champ {field_name}: {draw_error}")  # Ajouté pour débogage
+clothing_style_mapping = {
+    "": "",
+    "Décontracté": "casual",
+    "Professionnel": "professional",
+    "Sportif": "sporty"
+}
 
-        c.save()
-        print(f"PDF généré avec succès: {temp_pdf.name}")  # Ajouté pour débogage
-        return temp_pdf.name
-
-    except Exception as e:
-        print(f"Erreur lors de la génération du PDF : {e}")
-        return None
-
-def generate_pdf_wrapper(first_name, last_name, age, image_url):
-    pdf_file = generate_pdf(first_name, last_name, age, image_url)
-    if pdf_file:
-        return pdf_file
-    else:
-        return "Erreur lors de la génération du PDF."
+accessories_mapping = {
+    "": "",
+    "Lunettes": "glasses",
+    "Montre": "watch",
+    "Chapeau": "hat"
+}
 
 # Fonction pour affiner les contributions de l'utilisateur et de l'IA
 def refine_persona_details(first_name, last_name, age, field_name, field_value, biases, marketing_objectives):
@@ -322,76 +288,12 @@ def refine_persona_details(first_name, last_name, age, field_name, field_value, 
     suggestions_html = markdown.markdown(suggestions)
     gr.Info(suggestions_html, duration=30)
 
-# Ajouter les dictionnaires de correspondance
-posture_mapping = {
-    "": "",
-    "Debout": "standing up",
-    "Assis": "sitting",
-    "Allongé": "lying down",
-    "Accroupi": "crouching",
-    "En mouvement": "moving",
-    "Reposé": "resting"
-}
-
-facial_expression_mapping = {
-    "": "",
-    "Souriant": "smiling",
-    "Sérieux": "serious",
-    "Triste": "sad",
-    "En colère": "angry",
-    "Surpris": "surprised",
-    "Pensif": "thoughtful"
-}
-
-skin_color_mapping = {
-    "": "",
-    "Clair": "light",
-    "Moyen": "medium",
-    "Foncé": "dark"
-}
-
-eye_color_mapping = {
-    "": "",
-    "Bleu": "blue",
-    "Vert": "green",
-    "Marron": "brown"
-}
-
-hair_style_mapping = {
-    "": "",
-    "Court": "short",
-    "Long": "long",
-    "Bouclé": "curly"
-}
-
-hair_color_mapping = {
-    "": "",
-    "Blond": "blonde",
-    "Brun": "brown",
-    "Noir": "black"
-}
-
-clothing_style_mapping = {
-    "": "",
-    "Décontracté": "casual",
-    "Professionnel": "professional",
-    "Sportif": "sporty"
-}
-
-accessories_mapping = {
-    "": "",
-    "Lunettes": "glasses",
-    "Montre": "watch",
-    "Chapeau": "hat"
-}
-
 with gr.Blocks(theme=gr.themes.Citrus()) as demo:
     gr.Markdown("# Assistant de création de persona")
 
     with gr.Tab("Informations sur l'API OpenAI"):
         gr.Markdown("### Informations sur l'API OpenAI")
-        gr.Markdown("Veuillez entrer votre clé API OpenAI pour commencer.")
-        # TODO : Ajouer une infobulle pour ajouter sa clé PIA
+        gr.Markdown("Veuillez entrer votre clé API OpenAI pour commencer. [Voici un tutoriel pour vous aider à obtenir votre clé API](https://www.justgeek.fr/comment-obtenir-votre-cle-api-openai-107699/).")
 
         # Section de connexion API
         api_key_input = gr.Textbox(label="Entrez votre clé API OpenAI", type="password")
@@ -488,8 +390,6 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             inputs=objective_input,
             outputs=word_count_display
         )
-
-    # Autres étapes comme avant (image, révision et PDF)
 
     with gr.Tab("Étape 2: Image du persona et informations de base"):
         with gr.Row():
@@ -774,44 +674,5 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             inputs=[first_name_input, last_name_input, age_input, references_input, bias_analysis_output, objective_input],
             outputs=[]
         )
-
-    # Remplacer l'onglet "Résumé et export du persona" par :
-    with gr.Tab("Export du persona"):
-        gr.Markdown("### Export du persona")
-
-        # Bouton pour exporter le persona en PDF
-        export_pdf_button = gr.Button("Exporter en PDF")
-
-        # Fonction pour exporter le persona en PDF
-        def export_pdf_button_click(first_name, last_name, age, image_url, marital_status, education_level, profession,
-                                    income, personality_traits, values_beliefs, motivations, hobbies_interests,
-                                    main_responsibilities, daily_activities, technology_relationship, product_related_activities,
-                                    pain_points, product_goals, usage_scenarios, brand_relationship, market_segment,
-                                    commercial_objectives, visual_codes, special_considerations, daily_life, references):
-            pdf_file = generate_pdf(first_name, last_name, age, image_url, marital_status, education_level, profession,
-                                    income, personality_traits, values_beliefs, motivations, hobbies_interests,
-                                    main_responsibilities, daily_activities, technology_relationship, product_related_activities,
-                                    pain_points, product_goals, usage_scenarios, brand_relationship, market_segment,
-                                    commercial_objectives, visual_codes, special_considerations, daily_life, references)
-            if pdf_file:
-                return pdf_file
-            else:
-                return None  # Indiquer l'échec en renvoyant None
-
-        # Assurez-vous que pdf_file_output est défini comme un composant gr.File
-        pdf_file_output = gr.File(label="Télécharger le PDF")
-
-        export_pdf_button.click(
-            fn=export_pdf_button_click,
-            inputs=[
-                first_name_input, last_name_input, age_input, persona_image_output,
-                marital_status_input, education_level_input, profession_input, income_input,
-                personality_traits_input, values_beliefs_input, motivations_input, hobbies_interests_input,
-                main_responsibilities_input, daily_activities_input, technology_relationship_input,
-                product_related_activities_input, pain_points_input, product_goals_input, usage_scenarios_input,
-                brand_relationship_input, market_segment_input, commercial_objectives_input, visual_codes_input,
-                special_considerations_input, daily_life_input, references_input
-            ],
-            outputs=pdf_file_output)
 
 demo.queue().launch(debug=True)
