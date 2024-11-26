@@ -675,7 +675,6 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             inputs=[first_name_input, last_name_input, age_input, references_input, bias_analysis_output, objective_input],
             outputs=[]
         )
-
     with gr.Tab("Étape 4: Résumé du persona"):
         gr.Markdown("### Résumé du persona")
         summary_button = gr.Button("Afficher le résumé")
@@ -690,8 +689,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             main_responsibilities, daily_activities, technology_relationship,
             product_related_activities, pain_points, product_goals, persona_image_output
         ):
-
-            # Image
+            summary = "### Résumé du Persona\n\n"
             image = None
             if persona_image_output and os.path.exists(persona_image_output):
                 try:
@@ -700,71 +698,85 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                         img_base64 = base64.b64encode(img_bytes).decode()
                         img_data_url = f"data:image/png;base64,{img_base64}"
                         image = img_data_url
-
                 except Exception as e:
                     summary += f"**Erreur lors du chargement de l'image:** {str(e)}\n\n"
-
-            summary = "### Résumé du Persona\n\n"
-
-            # Section Informations Personnelles
-            personal_info = f"""
-            **Prénom**: {first_name}\n\n
-            **Nom de famille**: {last_name}\n\n
-            **Âge**: {age}\n\n
-            **Genre**: {gender}\n\n
-            **Description**: {persona_description}\n\n
-            """
             
-            # Section Caractéristiques Physiques
-            physical_characteristics = f"""
-            **Teint de la peau**: {skin_color}\n\n
-            **Couleur des yeux**: {eye_color}\n\n
-            **Coiffure**: {hair_style}\n\n
-            **Couleur des cheveux**: {hair_color}\n\n
-            **Expression faciale**: {facial_expression}\n\n
-            **Posture**: {posture}\n\n
-            **Style vestimentaire**: {clothing_style}\n\n
-            **Accessoires**: {accessories}\n\n
-            """
+            # Section Informations Personnelles
+            personal_info = ""
+            if first_name or last_name or age or gender or persona_description:
+                full_name = f"{first_name} {last_name}".strip()
+                if full_name:
+                    personal_info += f"**{full_name}**, {age} ans\n"
+
             
             # Section Informations Sociales
-            social_info = f"""
-            **État civil**: {marital_status}\n\n
-            **Niveau d'éducation**: {education_level}\n\n
-            **Profession**: {profession}\n\n
-            **Revenus annuels (€)**: {income}\n\n
-            """
+            social_info = ""
+            if marital_status or education_level or profession or income:
+                if marital_status:
+                    social_info += f"**État civil**: {marital_status}\n\n"
+                if education_level:
+                    social_info += f"**Niveau d'éducation**: {education_level}\n\n"
+                if profession:
+                    social_info += f"**Profession**: {profession}\n\n"
+                if income:
+                    social_info += f"**Revenus annuels (€)**: {income}\n\n"
             
             # Section Traits de Personnalité
-            personality_info = f"""
-            **Traits de personnalité**: {personality_traits}\n\n
-            **Valeurs et croyances**: {values_beliefs}\n\n
-            **Motivations intrinsèques**: {motivations}\n\n
-            **Hobbies et intérêts**: {hobbies_interests}\n\n
-            """
+            personality_info = ""
+            if personality_traits or values_beliefs or motivations or hobbies_interests:
+                if personality_traits:
+                    personality_info += f"**Traits de personnalité**: {personality_traits}\n\n"
+                if values_beliefs:
+                    personality_info += f"**Valeurs et croyances**: {values_beliefs}\n\n"
+                if motivations:
+                    personality_info += f"**Motivations intrinsèques**: {motivations}\n\n"
+                if hobbies_interests:
+                    personality_info += f"**Hobbies et intérêts**: {hobbies_interests}\n\n"
             
             # Section Responsabilités et Activités
-            responsibilities_info = f"""
-            **Responsabilités principales**: {main_responsibilities}\n\n
-            **Activités journalières**: {daily_activities}\n\n
-            **Relation avec la technologie**: {technology_relationship}\n\n
-            **Tâches liées au produit**: {product_related_activities}\n\n
-            """
+            responsibilities_info = ""
+            if main_responsibilities or daily_activities or technology_relationship or product_related_activities:
+                if main_responsibilities:
+                    responsibilities_info += f"**Responsabilités principales**: {main_responsibilities}\n\n"
+                if daily_activities:
+                    responsibilities_info += f"**Activités journalières**: {daily_activities}\n\n"
+                if technology_relationship:
+                    responsibilities_info += f"**Relation avec la technologie**: {technology_relationship}\n\n"
+                if product_related_activities:
+                    responsibilities_info += f"**Tâches liées au produit**: {product_related_activities}\n\n"
             
             # Section Points de Douleur et Objectifs
-            pain_goals_info = f"""
-            **Points de douleur**: {pain_points}\n\n
-            **Objectifs d’utilisation du produit**: {product_goals}\n\n
-            """
+            pain_goals_info = ""
+            if pain_points or product_goals:
+                if pain_points:
+                    pain_goals_info += f"**Points de douleur**: {pain_points}\n\n"
+                if product_goals:
+                    pain_goals_info += f"**Objectifs d’utilisation du produit**: {product_goals}\n\n"
             
-            # Assembler le résumé complet
-            summary += f"![Persona Image]({image})\n\n" if image else "Aucune image de persona générée.\n\n"
-            summary += "#### Informations Personnelles\n\n" + personal_info
-            summary += "#### Caractéristiques Physiques\n\n" + physical_characteristics
-            summary += "#### Informations Sociales\n\n" + social_info
-            summary += "#### Traits de Personnalité\n\n" + personality_info
-            summary += "#### Responsabilités et Activités\n\n" + responsibilities_info
-            summary += "#### Points de Douleur et Objectifs\n\n" + pain_goals_info
+            # Assembler le résumé complet avec image à droite
+            summary += "<div style='display: flex; align-items: flex-start;'>\n"
+            
+            # Colonne pour le texte
+            summary += "<div style='flex: 1; margin-right: 20px;'>\n"
+            if personal_info:
+                summary += "<div style='font-size: 1.2em; font-weight: bold;'>Informations Personnelles</div>\n\n" + personal_info
+            if social_info:
+                summary += "<div style='font-size: 1.2em; font-weight: bold;'>Informations Sociales</div>\n\n" + social_info
+            if personality_info:
+                summary += "<div style='font-size: 1.2em; font-weight: bold;'>Traits de Personnalité</div>\n\n" + personality_info
+            if responsibilities_info:
+                summary += "<div style='font-size: 1.2em; font-weight: bold;'>Responsabilités et Activités</div>\n\n" + responsibilities_info
+            if pain_goals_info:
+                summary += "<div style='font-size: 1.2em; font-weight: bold;'>Points de Douleur et Objectifs</div>\n\n" + pain_goals_info
+            summary += "</div>\n"
+            
+            # Colonne pour l'image
+            if image:
+                summary += f"<div style='flex: 1; text-align: center;'>\n<img src='{image}' style='max-width: 100%; max-height: 300px;'>\n</div>\n"
+            else:
+                summary += f"<div style='flex: 1; text-align: center;'>\n<p>Aucune image de persona générée.</p>\n</div>\n"
+            
+            summary += "</div>\n"
             
             return summary
         
