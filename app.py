@@ -11,6 +11,8 @@ import tempfile
 import numpy as np
 
 import markdown
+import base64
+
 
 # Modèle pour la réponse de l'analyse des biais
 class BiasAnalysisResponse(BaseModel):
@@ -133,7 +135,7 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
                            skin_color, eye_color, hair_style, hair_color, facial_expression,
                            posture, clothing_style, accessories):
     if not first_name or not last_name or not age or not gender:
-        return "Veuillez remplir tous les champs pour générer l'image du persona."
+        return gr.Info("Veuillez remplir tous les champs pour générer l'image du persona.")
     
     prompt = f"one person. {first_name} {last_name}, {gender}, {age} years old. Realist photo."
     
@@ -180,7 +182,7 @@ def generate_persona_image(first_name, last_name, age, gender, persona_descripti
     global temp_image_path
     temp_image_path = temp_image.name
 
-    return image_url
+    return temp_image.name  # Retourner le chemin local de l'image
 
 # Ajouter les dictionnaires de correspondance
 posture_mapping = {
@@ -286,7 +288,7 @@ def refine_persona_details(first_name, last_name, age, field_name, field_value, 
     )
     suggestions = response.choices[0].message.content.strip()
     suggestions_html = markdown.markdown(suggestions)
-    gr.Info(suggestions_html, duration=30)
+    gr.Info(suggestions_html, duration=60)
 
 with gr.Blocks(theme=gr.themes.Citrus()) as demo:
     gr.Markdown("# Assistant de création de persona")
@@ -393,7 +395,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
 
     with gr.Tab("Étape 2: Image du persona et informations de base"):
         with gr.Row():
-            with gr.Column(scale=1):
+            with gr.Column(scale=1.45):
                 first_name_input = gr.Textbox(label="Prénom")
                 last_name_input = gr.Textbox(label="Nom de famille")
                 age_input = gr.Slider(label="Âge", minimum=18, maximum=100, step=1)
@@ -401,7 +403,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 persona_description_input = gr.Textbox(label="Description du persona (en anglais)", lines=1)
                 generate_image_button = gr.Button("Générer l'image du persona", elem_id="generate_image_button")
             with gr.Column(scale=1):
-                persona_image_output = gr.Image(label="Image du persona")
+                persona_image_output = gr.Image(label="Image du persona", type="filepath")
         
         # Ajouter une infobulle sur les biais algorithmiques
         gr.HTML("""
@@ -410,7 +412,7 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 position: relative;
             }
             #generate_image_button::after {
-                content: "Attention : Les algorithmes peuvent introduire des biais dans les images générées. Veuillez vérifier les résultats attentivement.";
+                content: "Attention : Les algorithmes peuvent introduire des biais dans les images générées.";
                 position: absolute;
                 background: #f9f9f9;
                 border: 1px solid #ccc;
@@ -420,7 +422,6 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
                 left: 50%;
                 transform: translateX(-50%);
                 white-space: normal;
-                z-index: 1000;
                 opacity: 0;
                 visibility: hidden;
                 transition: opacity 0.5s ease-in-out, visibility 0.5s;
@@ -675,4 +676,110 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             outputs=[]
         )
 
+    with gr.Tab("Étape 4: Résumé du persona"):
+        gr.Markdown("### Résumé du persona")
+        summary_button = gr.Button("Afficher le résumé")
+        summary_content = gr.Markdown()
+        
+        def generate_summary(
+            first_name, last_name, age, gender, persona_description,
+            skin_color, eye_color, hair_style, hair_color, facial_expression,
+            posture, clothing_style, accessories,
+            marital_status, education_level, profession, income,
+            personality_traits, values_beliefs, motivations, hobbies_interests,
+            main_responsibilities, daily_activities, technology_relationship,
+            product_related_activities, pain_points, product_goals, persona_image_output
+        ):
+
+            # Image
+            image = None
+            if persona_image_output and os.path.exists(persona_image_output):
+                try:
+                    with open(persona_image_output, "rb") as img_file:
+                        img_bytes = img_file.read()
+                        img_base64 = base64.b64encode(img_bytes).decode()
+                        img_data_url = f"data:image/png;base64,{img_base64}"
+                        image = img_data_url
+
+                except Exception as e:
+                    summary += f"**Erreur lors du chargement de l'image:** {str(e)}\n\n"
+
+            summary = "### Résumé du Persona\n\n"
+
+            # Section Informations Personnelles
+            personal_info = f"""
+            **Prénom**: {first_name}\n\n
+            **Nom de famille**: {last_name}\n\n
+            **Âge**: {age}\n\n
+            **Genre**: {gender}\n\n
+            **Description**: {persona_description}\n\n
+            """
+            
+            # Section Caractéristiques Physiques
+            physical_characteristics = f"""
+            **Teint de la peau**: {skin_color}\n\n
+            **Couleur des yeux**: {eye_color}\n\n
+            **Coiffure**: {hair_style}\n\n
+            **Couleur des cheveux**: {hair_color}\n\n
+            **Expression faciale**: {facial_expression}\n\n
+            **Posture**: {posture}\n\n
+            **Style vestimentaire**: {clothing_style}\n\n
+            **Accessoires**: {accessories}\n\n
+            """
+            
+            # Section Informations Sociales
+            social_info = f"""
+            **État civil**: {marital_status}\n\n
+            **Niveau d'éducation**: {education_level}\n\n
+            **Profession**: {profession}\n\n
+            **Revenus annuels (€)**: {income}\n\n
+            """
+            
+            # Section Traits de Personnalité
+            personality_info = f"""
+            **Traits de personnalité**: {personality_traits}\n\n
+            **Valeurs et croyances**: {values_beliefs}\n\n
+            **Motivations intrinsèques**: {motivations}\n\n
+            **Hobbies et intérêts**: {hobbies_interests}\n\n
+            """
+            
+            # Section Responsabilités et Activités
+            responsibilities_info = f"""
+            **Responsabilités principales**: {main_responsibilities}\n\n
+            **Activités journalières**: {daily_activities}\n\n
+            **Relation avec la technologie**: {technology_relationship}\n\n
+            **Tâches liées au produit**: {product_related_activities}\n\n
+            """
+            
+            # Section Points de Douleur et Objectifs
+            pain_goals_info = f"""
+            **Points de douleur**: {pain_points}\n\n
+            **Objectifs d’utilisation du produit**: {product_goals}\n\n
+            """
+            
+            # Assembler le résumé complet
+            summary += f"![Persona Image]({image})\n\n" if image else "Aucune image de persona générée.\n\n"
+            summary += "#### Informations Personnelles\n\n" + personal_info
+            summary += "#### Caractéristiques Physiques\n\n" + physical_characteristics
+            summary += "#### Informations Sociales\n\n" + social_info
+            summary += "#### Traits de Personnalité\n\n" + personality_info
+            summary += "#### Responsabilités et Activités\n\n" + responsibilities_info
+            summary += "#### Points de Douleur et Objectifs\n\n" + pain_goals_info
+            
+            return summary
+        
+        summary_button.click(
+            fn=generate_summary,
+            inputs=[
+                first_name_input, last_name_input, age_input, gender_input, persona_description_input,
+                skin_color_input, eye_color_input, hair_style_input, hair_color_input,
+                facial_expression_input, posture_input,
+                clothing_style_input, accessories_input,
+                marital_status_input, education_level_input, profession_input, income_input,
+                personality_traits_input, values_beliefs_input, motivations_input, hobbies_interests_input,
+                main_responsibilities_input, daily_activities_input, technology_relationship_input,
+                product_related_activities_input, pain_points_input, product_goals_input, persona_image_output
+            ],
+            outputs=summary_content
+        )
 demo.queue().launch(debug=True)
