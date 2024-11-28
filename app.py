@@ -3,7 +3,6 @@ from gradio_client import Client
 
 from openai import OpenAI
 from pydantic import BaseModel
-
 import os
 import requests
 from PIL import Image
