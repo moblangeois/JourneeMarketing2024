@@ -688,6 +688,11 @@ with gr.Blocks(theme=gr.themes.Citrus()) as demo:
             product_related_activities, pain_points, product_goals, persona_image_output
         ):
             summary = ""
+
+            if not first_name or not last_name or not age:
+                summary += "**Veuillez fournir les informations de base du persona (prénom, nom, âge).**\n\n"
+                return summary
+                
             image = None
             if persona_image_output and os.path.exists(persona_image_output):
                 try:
